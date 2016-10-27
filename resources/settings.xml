@@ -1,0 +1,17 @@
+<settings>
+    <setting propertyKey="@Properties.appVersion" title="@Strings.AppVersion">
+        <settingConfig type="alphaNumeric" readonly="true"/>
+    </setting>
+    <setting propertyKey="@Properties.TideStation1Id" title="@Strings.TideStationId">
+        <settingConfig type="numeric"/>
+    </setting>
+    <setting propertyKey="@Properties.TideStation1Name" title="@Strings.TideStationName">
+        <settingConfig type="alphaNumeric"/>
+    </setting>
+    <setting propertyKey="@Properties.TideStation2Id" title="@Strings.TideStationId">
+        <settingConfig type="numeric"/>
+    </setting>
+    <setting propertyKey="@Properties.TideStation2Name" title="@Strings.TideStationName">
+        <settingConfig type="alphaNumeric"/>
+    </setting>
+</settings>

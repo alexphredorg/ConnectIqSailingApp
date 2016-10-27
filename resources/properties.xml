@@ -1,0 +1,7 @@
+<properties>
+    <property id="appVersion" type="string">1.0</property>
+    <property id="TideStation1Id" type="number">9447130</property>
+    <property id="TideStation1Name" type="string">Seattle (Elliot Bay)</property>
+    <property id="TideStation2Id" type="number">9445719</property>
+    <property id="TideStation2Name" type="string">Poulsbo (Liberty Bay)</property>
+</properties>

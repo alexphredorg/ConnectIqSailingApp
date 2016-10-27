@@ -1,0 +1,1 @@
+copy bin\SailingApp.prg d:\garmin\apps

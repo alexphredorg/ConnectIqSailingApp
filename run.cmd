@@ -1,0 +1,1 @@
+monkeydo bin\SailingApp.prg vivoactive_hr

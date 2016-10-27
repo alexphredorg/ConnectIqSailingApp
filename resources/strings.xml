@@ -1,0 +1,12 @@
+<strings>
+    <string id="AppName">Sailing</string>
+
+    <string id="prompt">Click the menu button</string>
+
+    <string id="menu_label_1">Item 1</string>
+    <string id="menu_label_2">Item 2</string>
+
+    <string id="AppVersion">App Version</string>
+    <string id="TideStationName">Tide Station Name</string>
+    <string id="TideStationId">Tide Station Id</string>
+</strings>
