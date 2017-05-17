@@ -2,16 +2,10 @@
     <setting propertyKey="@Properties.appVersion" title="@Strings.AppVersion">
         <settingConfig type="alphaNumeric" readonly="true"/>
     </setting>
-    <setting propertyKey="@Properties.TideStation1Id" title="@Strings.TideStationId">
-        <settingConfig type="numeric"/>
+    <setting propertyKey="@Properties.calTopoId" title="@Strings.CalTopoId">
+        <settingConfig type="alphaNumeric" readonly="false"/>
     </setting>
-    <setting propertyKey="@Properties.TideStation1Name" title="@Strings.TideStationName">
-        <settingConfig type="alphaNumeric"/>
-    </setting>
-    <setting propertyKey="@Properties.TideStation2Id" title="@Strings.TideStationId">
-        <settingConfig type="numeric"/>
-    </setting>
-    <setting propertyKey="@Properties.TideStation2Name" title="@Strings.TideStationName">
-        <settingConfig type="alphaNumeric"/>
+    <setting propertyKey="@Properties.forcePugetSound" title="@Strings.ForcePugetSound">
+        <settingConfig type="boolean" readonly="false"/>
     </setting>
 </settings>
