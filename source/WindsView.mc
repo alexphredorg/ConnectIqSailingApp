@@ -31,22 +31,27 @@ class WindsView extends CommonView {
     // hack to make it center on Seattle initially
     var iWindData = 3;
 
-    var timer = null;
+    // what time did we last refresh the wind data?
+    var lastDataRefresh;
 
     //
     // initialize the view
     //
     function initialize() {
         CommonView.initialize("wind");
+        lastDataRefresh = Time.today();
 
         // override the clock font
         clockSpeedFont = WINDTIME_FONT;
+    }
 
-        // setup our refresh timer
-        timer = new Timer.Timer();
-
-        // go get the tidal data from bob
-        requestWindData();
+    //
+    // called when we need to reduce system memory to avoid hitting "out of objects"
+    //
+    function reduceMemory()
+    {
+        System.println("reduce memory: " + viewName);
+        windData = [];
     }
 
     //
@@ -98,7 +103,8 @@ class WindsView extends CommonView {
     // Make a web request to get the wind data from the internet
     //
     function requestWindData() {
-        System.println("makeRequest()");
+        System.println("wind: makeRequest()");
+        lastDataRefresh = Time.now();
         var url = "http://b.obhall.com/obs/";
         var headers = {
             "Content-Type" => Comm.REQUEST_CONTENT_TYPE_URL_ENCODED,
@@ -113,7 +119,7 @@ class WindsView extends CommonView {
                 :responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_JSON
             },
             method(:onReceive));
-        System.println("makeRequest() done");
+        System.println("wind: makeRequest() done");
     }
 
     //
@@ -122,22 +128,18 @@ class WindsView extends CommonView {
     // responseCode -- HTTP response code when doing the JSON request
     // data -- the raw data that is received
     //
-    function onReceive(responseCode, data) {
-        System.println("onReceive(): " + responseCode);
+    function onReceive(responseCode, data) 
+    {
+        System.println("wind: onReceive(): " + responseCode);
 
         var predictions = null;
-        var timerSeconds = 600;
 
-        if (responseCode == Comm.BLE_QUEUE_FULL) {
-            timerSeconds = 5;
-        }
-        if (responseCode == 200) {
+        if (responseCode == 200) 
+        {
             windData = data;
             System.println(windData);
         }
 
-        // setup a refresh timer
-        timer.start(method(:requestWindData), timerSeconds * 1000, false);
         Ui.requestUpdate();
     }
 
@@ -145,6 +147,13 @@ class WindsView extends CommonView {
     // Update the view
     //
     function onUpdate(dc) {
+        // see how long it has been since our last update.  If it has been a while then do the update.
+        if (Time.now().subtract(lastDataRefresh).value() > 600)
+        {
+            System.println("wind data refresh");
+            requestWindData();
+        }
+
         var bgcolor = Graphics.COLOR_BLACK;
         var fgcolor = Graphics.COLOR_WHITE;
 

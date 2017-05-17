@@ -7,6 +7,7 @@ using Toybox.Timer as Timer;
 using Toybox.Position as Position;
 using Toybox.Attention as Attention;
 using Toybox.Communications as Comm;
+using Toybox.Application as App;
 
 class TidesView extends CommonView {
     // This set of constants is used to control how tides are rendered.
@@ -40,7 +41,7 @@ class TidesView extends CommonView {
 
     // this is set to true when we are computing tide data.  We don't
     // render during that time
-    var fComputingData = true;
+    var fComputingData = false;
 
     // text data for high and low points in the tidal cycle. 
     // each entry is a dict with the following structure
@@ -65,23 +66,14 @@ class TidesView extends CommonView {
     var tideNowPoint = TIDE_NOW_POINT;
     var momentStart;
 
-    //
-    // This is the list of supported tide stations.
-    // TODO: Figure out a way to load this from a file on the device
-    // instead of having it cooked into our binary.  These consume a lot
-    // of program space
-    //
-    var stations = [
-        new Tacoma(),
-        new Seattle(),
-        new PortTownsend(),
-        new PortAngeles(),
-        new FridayHarbor(),
-        new NeahBay()
-    ];
+    var stationName = null;
+    var refreshCount = 1;
 
-    // What is the active station
-    var iStation = 1;
+    // GPS data
+    var position = null;
+
+    // are we getting data from the internet?
+    var fOnline = false;
 
     //
     // initialize the view
@@ -90,6 +82,13 @@ class TidesView extends CommonView {
         CommonView.initialize("tides");
 
         timer = new Timer.Timer();
+
+        // see if we have a saved tide station.  If so we'll plot that one
+        tideStation = new TideStationFromObjectStore();
+        if (tideStation.validStation())
+        {
+            stationName = tideStation.name();
+        }
 
         // start generating tide data
         requestTideData();
@@ -120,22 +119,53 @@ class TidesView extends CommonView {
         }
     }
 
+    // 
+    // Get the tide station list from the object store
+    //
+    function getTideStationList() 
+    {
+        var app = App.getApp();
+        var stationList = app.getProperty("TideStationList");
+        if (stationList == null || !(stationList instanceof Toybox.Lang.Array))
+        {
+            stationList = [];
+        }
+        return stationList; 
+    }
+
     //
     // when the menu button is pressed.  We create a custom menu that lists
     // all of the stations
     //
     function onMenu() {
         resetMenu();
-        menu.setTitle("Select Tide Station");
-        for (var i = 0; i < stations.size(); i++) {
-            var stationName = stations[i].stationName();
-            var openParen = stationName.find("(");
-            if (openParen != null && openParen > 0) {
-                stationName = stationName.substring(0, openParen);
+
+        var connected = System.getDeviceSettings().phoneConnected;
+
+        if (connected)
+        {
+            var stationList = getTideStationList();
+            if (stationList == null) 
+            {
+                stationList = [];
             }
-            addMenuItem(stationName);
-        } 
-        showMenu();
+
+            menu.setTitle("Select Tide Station");
+            for (var i = 0; i < stationList.size(); i++) {
+                addMenuItem(stationList[i]["name"]);
+            } 
+
+            if (connected && position != null)
+            {
+                addMenuItem("<Find Nearby Stations>");
+            }
+            showMenu();
+        }
+        else
+        {
+            System.println("showing error message");
+            errorDialog("No connection: Watch must be connected to phone to get tide data");
+        }
         return true;
     }
 
@@ -146,27 +176,25 @@ class TidesView extends CommonView {
     //                  station
     //
     function menuItemSelected(stationIndex) {
-        iStation = stationIndex;
-        requestTideData();
+        var stationList = getTideStationList();
+        System.println("stationList.size = " + stationList.size());
+        System.println("stationIndex  = " + stationIndex);
+        if (stationList != null && stationIndex < stationList.size())
+        {
+            // a new station has been selected, render that one
+            System.println("selecting station id: " + stationList[stationIndex]["id"]);
+            requestStationInfo(stationList[stationIndex]["id"]);
+        }
+        else if (stationIndex == stationList.size())
+        {
+            // get a new list of stations
+            requestStationList();
+        }
     }
 
-    //
-    // used to cycle through wind stations
-    //
-    function onSwipeUp() {
-        iStation = (iStation + 1) % stations.size();
-        requestTideData();
-        return true;
-    }
-
-    //
-    // used to cycle through wind stations
-    //
-    function onSwipeDown() {
-        iStation--;
-        if (iStation < 0) { iStation = stations.size() - 1; }
-        requestTideData();
-        return true;
+    function onEscKey()
+    {
+        self.quitDialog();
     }
 
     //
@@ -188,31 +216,42 @@ class TidesView extends CommonView {
     // how much of tidalData have we filled up?
     var iTidalData;
 
+    // tide station information.  This is unloaded after we generate tide data.
+    var tideStation = null;
+
     //
     // start the process of rendering new tide data.  This is computationally
     // expensive (for a watch) and so we do it in an async called helper 
     // method to avoid hitting the watch's watchdog timer
     //
     function requestTideData() {
-        fComputingData = true;
+        tideStation = new TideStationFromObjectStore();
+        if (!tideStation.validStation()) 
+        {
+            stationName = null;
+        } 
+        else 
+        {
+            fComputingData = true;
 
-        var startOfYear = Gregorian.moment({:day=>1, :month=>1, :hour=>0, :minute=>0, :second=>0});
-        var now = Gregorian.now();
-        var start = now.add(new Time.Duration(-TIDE_BATCH_SECONDS * TIDE_BACK_BATCHES));
-        var startInfo = Gregorian.info(start, Time.FORMAT_SHORT);
-        var nowInfo = Gregorian.info(now, Time.FORMAT_SHORT);
-        year = nowInfo.year;
+            var startOfYear = Gregorian.moment({:day=>1, :month=>1, :hour=>0, :minute=>0, :second=>0});
+            var now = Gregorian.now();
+            var start = now.add(new Time.Duration(-TIDE_BATCH_SECONDS * TIDE_BACK_BATCHES));
+            var startInfo = Gregorian.info(start, Time.FORMAT_SHORT);
+            var nowInfo = Gregorian.info(now, Time.FORMAT_SHORT);
+            year = nowInfo.year;
 
-        currHours = (start.value() - startOfYear.value()) / 3600;
-        currHours = currHours.toDouble();
-        currMinutes = nowInfo.hour * 60 + nowInfo.min;
-        currMinutes -= (TIDE_BATCH_SECONDS * TIDE_BACK_BATCHES / 60);
-        minIncrement = TIDE_POINT_PERIOD / 60;
-        hourIncrement = TIDE_POINT_PERIOD.toFloat() / 3600;
-        iTidalData = 0;
-        batch = 0;
-        timer.stop();
-        timer.start(method(:timerStep), 50, true);
+            currHours = (start.value() - startOfYear.value()) / 3600;
+            currHours = currHours.toDouble();
+            currMinutes = nowInfo.hour * 60 + nowInfo.min;
+            currMinutes -= (TIDE_BATCH_SECONDS * TIDE_BACK_BATCHES / 60);
+            minIncrement = TIDE_POINT_PERIOD / 60;
+            hourIncrement = TIDE_POINT_PERIOD.toFloat() / 3600;
+            iTidalData = 0;
+            batch = 0;
+            timer.stop();
+            timer.start(method(:timerStep), 50, true);
+        }
     }
 
     // 
@@ -241,7 +280,7 @@ class TidesView extends CommonView {
             currMinutes += minIncrement;
 
             // compute the height for this time
-            var height = computeTideHeight(stations[iStation], year, currHours);
+            var height = computeTideHeight(tideStation, year, currHours);
 
             // save the results
             tidalData[iTidalData] = height.toFloat();
@@ -268,6 +307,7 @@ class TidesView extends CommonView {
         tideGraphStart = TIDE_GRAPH_START;
         tideGraphStart = tideGraphStart.toNumber();
         tideNowPoint = TIDE_NOW_POINT;
+        tideStation = null;
 
         //
         // go through all tide points.  We're looking for the minimum tide
@@ -374,32 +414,211 @@ class TidesView extends CommonView {
     }
 
     //
+    // called when the position is updated by GPS. 
+    // 
+    function onPositionUpdate(info) {
+        if (info.position == null)
+        {
+            self.position = null;
+        }
+        else
+        {
+            self.position = info.position.toDegrees();
+        }
+    }
+
+    //
+    // request data for a tide station from the internet
+    //
+    function requestStationInfo(id)
+    {
+        fOnline = true;
+        var app = App.getApp();
+        var tideStationId = app.getProperty("TideStationId");
+        var url = "http://www.phred.org:18266/TideStation/" + id;
+        System.println("tide: url = " + url);
+        httpGetJson(url, :onReceiveStationInfo);
+    }
+
+    //
+    // Callback for requestStationInfo
+    //
+    // responseCode -- HTTP response code when doing the JSON request
+    // data -- the raw data that is received
+    //
+    function onReceiveStationInfo(responseCode, data) 
+    {
+        System.println("tides: onReceiveStationInfo(): " + responseCode);
+        var errorInfo = "";
+
+        if (responseCode == 200) 
+        {
+            // validate the data format.  
+            if (data["station"] != null && data["station"] instanceof Toybox.Lang.Dictionary)
+            {
+                var station = data["station"];
+                if (station["name"] != null && station["name"] instanceof Toybox.Lang.String &&
+                    station["datum"] != null && station["datum"] instanceof Toybox.Lang.Float &&
+                    station["amp"] != null && station["amp"] instanceof Toybox.Lang.Array &&
+                    station["epoch"] != null && station["epoch"] instanceof Toybox.Lang.Array &&
+                    station["speed"] != null && station["speed"] instanceof Toybox.Lang.Array &&
+                    station["equilibrium"] != null && station["equilibrium"] instanceof Toybox.Lang.Dictionary &&
+                    station["node_factor"] != null && station["node_factor"] instanceof Toybox.Lang.Dictionary)
+                {
+                    var app = App.getApp();
+                    app.setProperty("TideStationInfo", data["station"]);
+                    stationName = data["station"]["name"];
+                    self.requestTideData();
+                    self.fOnline = false;
+                    return;
+                }
+                errorInfo = "Invalid station list data";
+            }
+            else if (data["error"] != null && data["error"] instanceof Toybox.Lang.String)
+            {
+                errorInfo = data["error"];
+            }
+        }
+        System.println("Error: " + errorInfo);
+        self.fOnline = false;
+    }
+
+    //
+    // request data for the list of nearby tide stations from the internet
+    //
+    // returns: false if no known position, true otherwise
+    //
+    function requestStationList()
+    {
+        if (position == null) 
+        {
+            return false;
+        }
+        self.fOnline = true;
+        var url = "http://www.phred.org:18266/TideStations/" + position[0] + "," + position[1];
+        httpGetJson(url, :onReceiveStationList);
+        return true;
+    }
+
+    //
+    // Callback for requestStationList
+    //
+    // responseCode -- HTTP response code when doing the JSON request
+    // data -- the raw data that is received
+    //
+    function onReceiveStationList(responseCode, data) 
+    {
+        System.println("tides: onReceiveStationList(): " + responseCode);
+        var errorInfo = "";
+
+        if (responseCode == 200) 
+        {
+            System.println(data);
+            // validate the data format.  
+            if (data["stations"] != null && data["stations"] instanceof Toybox.Lang.Array)
+            {
+                System.println("stations list found");
+                var stationCount = data["stations"].size();
+                for (var i = 0; i < stationCount; i++)
+                {
+                    var station = data["stations"][i];
+                    System.println("station: " + station);
+                    if (station instanceof Toybox.Lang.Dictionary)
+                    {
+                        if (station["name"] != null && station["name"] instanceof Toybox.Lang.String &&
+                            station["id"] != null && station["id"] instanceof Toybox.Lang.Number)
+                        {
+                            var app = App.getApp();
+                            app.setProperty("TideStationList", data["stations"]);
+                            self.fOnline = false;
+                            onMenu();
+                            return;
+                        }
+                    }
+                }
+                errorInfo = "Invalid station list data";
+            }
+            else if (data["error"] != null && data["error"] instanceof Toybox.Lang.String)
+            {
+                errorInfo = data["error"];
+            }
+        }
+
+        System.println("Error: " + errorInfo);
+        self.fOnline = false;
+    }
+
+
+    //
+    // Draw error or other text on the screen.  
+    //
+    function renderText(dc, font, textArray)
+    {
+        //
+        // No tide station selected
+        //
+        var y = 0;
+        y += dc.getFontHeight(font) + 4;
+        for (var i = 0; i < textArray.size(); i++)
+        {
+            dc.drawText(screenWidth / 2, y, font, textArray[i], Graphics.TEXT_JUSTIFY_CENTER);    
+            y += dc.getFontHeight(font);
+        }
+        return y;
+    }
+
+    //
     // Render the view
     //
     function onUpdate(dc) {
         var bgcolor = Graphics.COLOR_BLACK;
+        var connected = System.getDeviceSettings().phoneConnected;
         var fgcolor = Graphics.COLOR_WHITE;
 
         dc.setColor(bgcolor, bgcolor);
         dc.clear();
         dc.setColor(fgcolor, Graphics.COLOR_TRANSPARENT);
 
-        if (fComputingData) {
+        if (stationName instanceof Toybox.Lang.String)
+        {
+            stationName = CommonView.wordWrap(dc, TIDE_FONT, stationName);
+        }
+
+        if (fComputingData) 
+        {
             //
             // We're still computing tides, show the user some sign of 
             // progress
             //
-            var y = 0;
-            var font = Graphics.FONT_LARGE;
-            y += dc.getFontHeight(font) + 4;
-            dc.drawText(screenWidth / 2, y, font, "Computing", Graphics.TEXT_JUSTIFY_CENTER);    
-            y += dc.getFontHeight(font) + 4;
-            dc.drawText(screenWidth / 2, y, font, "Tides", Graphics.TEXT_JUSTIFY_CENTER);    
-            y += dc.getFontHeight(font) + 4;
+            var font = Graphics.FONT_MEDIUM;
+            var y = self.renderText(dc, font, [ "Computing", "Tides" ]);
             var dots = "";
             for (var i = 0; i < batch; i++) { dots = dots + "."; }
             dc.drawText(screenWidth / 2, y, font, dots, Graphics.TEXT_JUSTIFY_CENTER);    
-        } else {
+        } 
+        else if (fOnline)
+        {
+            //
+            // We're download station information
+            //
+            self.renderText(dc, Graphics.FONT_MEDIUM, [ "Downloading", "Tide Info" ]);
+        } 
+        else if (stationName == null && connected && position != null)
+        {
+            //
+            // No tide station selected
+            //
+            self.renderText(dc, Graphics.FONT_MEDIUM, [ "Press Menu", "to Select a", "Tide Station" ]);
+        }
+        else if (stationName == null)
+        {
+            //
+            // No tide station selected and no GPS or data
+            //
+            self.renderText(dc, Graphics.FONT_MEDIUM, [ "Connect phone", "and enable GPS", "to view Tides" ]);
+        }
+        else 
+        {
             //
             // draw our tides screen
             //
@@ -407,7 +626,9 @@ class TidesView extends CommonView {
 
             // top of the screen has the name of the tide station
             dc.setColor(fgcolor, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(screenWidth / 2, 0, TIDE_FONT, stations[iStation].stationName(), Graphics.TEXT_JUSTIFY_CENTER);
+            var stationNameIndex = (refreshCount / 2) % stationName.size();
+            refreshCount++;
+            dc.drawText(screenWidth / 2, 0, TIDE_FONT, stationName[stationNameIndex], Graphics.TEXT_JUSTIFY_CENTER);
 
             // below that is a tide graph that is TIDE_PIXELs tall.  The 
             // graph is scaled to fit our tides.
@@ -506,4 +727,31 @@ class TidesView extends CommonView {
         // CommonView draws the time and boat speed
         CommonView.onUpdate(dc);
     }
+}
+
+
+//
+// Data representing one tide station.  The data for this is loaded from the object store and was
+// saved there by onReceiveStationInfo
+//
+class TideStationFromObjectStore {
+    var stationInfo;
+    function initialize() 
+    {
+        var app = App.getApp();
+        stationInfo = app.getProperty("TideStationInfo");
+        self.stationInfo = stationInfo;
+    }
+    function validStation() 
+    {
+        return (stationInfo != null);
+    }
+	function name() { return self.stationInfo["name"]; }
+    function zoneOffset() { return self.stationInfo["zone_offset"]; }
+	function datum() { return self.stationInfo["datum"]; }
+	function amp() { return self.stationInfo["amp"]; }
+	function epoch() { return self.stationInfo["epoch"]; }
+	function speed() { return self.stationInfo["speed"]; }
+	function equilarg(year) { return self.stationInfo["equilibrium"][year.toString()]; }
+	function nodeFactor(year) { return self.stationInfo["node_factor"][year.toString()]; }
 }

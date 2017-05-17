@@ -7,6 +7,7 @@ using Toybox.Timer as Timer;
 using Toybox.Position as Position;
 using Toybox.Attention as Attention;
 using Toybox.ActivityRecording as Record;
+using Toybox.Application as App;
 
 class TimerView extends CommonView {
     // timerZero is when the timer will display 00:00.  If it is null
@@ -22,9 +23,10 @@ class TimerView extends CommonView {
     // one quarter of the screen in pixels 
     var quarterWidth;
     // the font that we use when drawing buttons
-    const BUTTON_FONT = Graphics.FONT_SMALL;
-    // what was the minute when we last vibrated?
-    var lastVibrationMinute = 0;
+
+    // remember when we last vibrated the watch, we do this to make sure that we don't vibrate
+    // multiple times in the same second
+    var lastVibrationDuration = 0;
 
     //
     // initialize the view
@@ -32,10 +34,14 @@ class TimerView extends CommonView {
     function initialize() {
         showSeconds = true;
         CommonView.initialize("timer");
+    }
 
-        // turn on the GPS
-        System.println("enable GPS");
-        Position.enableLocationEvents(Position.LOCATION_CONTINUOUS, method(:onPositionUpdate));
+    //
+    // Esc key is used to exit the app from the timer screen
+    //
+    function onEscKey()
+    {
+        self.quitDialog();
     }
 
     //
@@ -232,7 +238,7 @@ class TimerView extends CommonView {
             if (!timerDone && duration % 60 == 0)
             {
                 var minute = duration / 60;
-                if (lastVibrationMinute != minute)
+                if (lastVibrationDuration != duration)
                 {
                     var vibrateData;
 
@@ -247,6 +253,10 @@ class TimerView extends CommonView {
                         ];
 
                         // we add a lap for when the race actually started
+                        if ($.session == null) {
+                            $.session = Record.createSession({ :name => "sailing", :sport => Record.SPORT_GENERIC });
+                            $.session.start();
+                        }
                         $.session.addLap();
                     } else if (minute == ((timerDuration / 60) - 1) || minute == 1) {
                         // flag change
@@ -263,8 +273,20 @@ class TimerView extends CommonView {
                     }
 
                     Attention.vibrate(vibrateData);
-                    lastVibrationMinute = minute;
+                    lastVibrationDuration = duration;
                 }
+            } 
+            else if (!timerDone && duration < 60 && duration % 10 == 0 && duration != lastVibrationDuration)
+            {
+                // every 10 seconds in last minute
+                Attention.vibrate([ new Attention.VibeProfile(100, 50) ]);
+                lastVibrationDuration = duration;
+            }
+            else if (!timerDone && duration < 10 && duration != lastVibrationDuration)
+            {
+                // every 1 second in last 10 seconds
+                Attention.vibrate([ new Attention.VibeProfile(100, 50) ]);
+                lastVibrationDuration = duration;
             }
         }
 
@@ -322,17 +344,17 @@ class TimerView extends CommonView {
                 dc.setColor(Graphics.COLOR_GREEN, Graphics.COLOR_TRANSPARENT);
                 dc.fillRoundedRectangle(2, screenHeight - 35, screenWidth - 2, screenHeight - 2, 2);
                 dc.setColor(bgcolor, Graphics.COLOR_TRANSPARENT);
-                dc.drawText(quarterWidth * 1, 7, BUTTON_FONT, "-1:00", Graphics.TEXT_JUSTIFY_CENTER);
-                dc.drawText(quarterWidth * 3, 7, BUTTON_FONT, "+1:00", Graphics.TEXT_JUSTIFY_CENTER);
+                dc.drawText(quarterWidth * 1, 7, Graphics.FONT_SMALL, "-1:00", Graphics.TEXT_JUSTIFY_CENTER);
+                dc.drawText(quarterWidth * 3, 7, Graphics.FONT_SMALL, "+1:00", Graphics.TEXT_JUSTIFY_CENTER);
                 dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-                dc.drawText(quarterWidth * 2, screenHeight - 28, BUTTON_FONT, "Just Sail", Graphics.TEXT_JUSTIFY_CENTER);
+                dc.drawText(quarterWidth * 2, screenHeight - 28, Graphics.FONT_SMALL, "Just Sail", Graphics.TEXT_JUSTIFY_CENTER);
             } else {
                 showClock = true;
                 dc.fillRoundedRectangle(2, 2, (quarterWidth * 2) - 2, 33, 2);
                 dc.fillRoundedRectangle((quarterWidth * 2) + 2, 2, (quarterWidth * 2) - 2, 33, 2);
                 dc.setColor(bgcolor, Graphics.COLOR_TRANSPARENT);
-                dc.drawText(quarterWidth * 1, 7, BUTTON_FONT, "reset", Graphics.TEXT_JUSTIFY_CENTER);
-                dc.drawText(quarterWidth * 3, 7, BUTTON_FONT, "sync", Graphics.TEXT_JUSTIFY_CENTER);
+                dc.drawText(quarterWidth * 1, 7, Graphics.FONT_SMALL, "reset", Graphics.TEXT_JUSTIFY_CENTER);
+                dc.drawText(quarterWidth * 3, 7, Graphics.FONT_SMALL, "sync", Graphics.TEXT_JUSTIFY_CENTER);
             }
         } else {
             showClock = true;
@@ -344,13 +366,8 @@ class TimerView extends CommonView {
             }
             dc.drawText(quarterWidth * 2, 0, Graphics.FONT_LARGE, mode, Graphics.TEXT_JUSTIFY_CENTER);
 
-            if ($.gpsAccuracy < 2) {
-                dc.setColor(Graphics.COLOR_RED, Graphics.COLOR_TRANSPARENT);
-            } else if ($.gpsAccuracy == 2) {
-                dc.setColor(Graphics.COLOR_YELLOW, Graphics.COLOR_TRANSPARENT);
-            } else {
-                dc.setColor(Graphics.COLOR_GREEN, Graphics.COLOR_TRANSPARENT);
-            }
+            // draw a G in the upper left showing GPS status
+            dc.setColor(GpsAccuracyColor($.gpsAccuracy), Graphics.COLOR_TRANSPARENT);
             dc.drawText(0, 0, Graphics.FONT_XTINY, "G", Graphics.TEXT_JUSTIFY_LEFT);
 
             if ($.session != null && $.session.isRecording())

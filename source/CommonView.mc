@@ -17,7 +17,27 @@ const menuSymbols = [
     :menuItem5,
     :menuItem6,
     :menuItem7,
-    :menuItem8
+    :menuItem9,
+    :menuItem10,
+    :menuItem11,
+    :menuItem12,
+    :menuItem13,
+    :menuItem14,
+    :menuItem15,
+    :menuItem16,
+    :menuItem17,
+    :menuItem18,
+    :menuItem19,
+    :menuItem20,
+    :menuItem21,
+    :menuItem22,
+    :menuItem23,
+    :menuItem24,
+    :menuItem25,
+    :menuItem26,
+    :menuItem27,
+    :menuItem28,
+    :menuItem29
     ];
 
 var speed = -1;
@@ -26,11 +46,9 @@ var session = null;
 var gpsAccuracy = 0;
 
 class CommonView extends Ui.View {
-    // this is all hardcoded to the vivoactive HR screen
-    const TIME_FONT = Graphics.FONT_MEDIUM;
-
     // screen width
     var screenWidth = 148;
+    var quarterWidth;
     var screenHeight;
     var cMenuItems = 0;
     var menu = null;
@@ -38,7 +56,7 @@ class CommonView extends Ui.View {
     var showSeconds = false;
     var showClock = true;
     var showSpeed = true;
-    var clockSpeedFont = TIME_FONT;
+    var clockSpeedFont = Graphics.FONT_MEDIUM;
     var updateTimer;
 
     // initialize the view
@@ -47,13 +65,12 @@ class CommonView extends Ui.View {
         View.initialize();
     }
 
-    // called when the user clicks on the screen
-    function screenTap(evt) {
-        return true;
+    function reduceMemory() {
+        System.println("reduce memory: " + viewName);
     }
 
-    // when the user hits the enter key
-    function onEnterKey() {
+    // called when the user clicks on the screen
+    function screenTap(evt) {
         return true;
     }
 
@@ -63,6 +80,24 @@ class CommonView extends Ui.View {
 
     function onSwipeDown() {
         return true;
+    }
+
+    function onEscKey() {
+        return onSwipeDown();
+    }
+
+    function onEnterKey() {
+        return onSwipeUp();
+    }
+
+    function quitDialog() {
+        var dialog = new Ui.Confirmation("Really quit?");
+        Ui.pushView(dialog, new ConfirmQuitDelegate(), Ui.SLIDE_IMMEDIATE);
+    }
+
+    function errorDialog(errorText) {
+        var dialog = new Confirmation(errorText);
+        Ui.pushView(dialog, new ConfirmationDelegate(), Ui.SLIDE_IMMEDIATE);
     }
 
     // called by onMenu to start a new menu
@@ -75,6 +110,10 @@ class CommonView extends Ui.View {
     function addMenuItem(text) {
         menu.addItem(text, $.menuSymbols[cMenuItems]);
         cMenuItems++;
+        if (cMenuItems > menuSymbols.size()) {
+            System.println("menu full!!!");
+            cMenuItems--;
+        }
     }
 
     // called after all calls to addMenuItem
@@ -106,6 +145,7 @@ class CommonView extends Ui.View {
     function onLayout(dc) {
         screenWidth = dc.getWidth();
         screenHeight = dc.getHeight();
+        quarterWidth = dc.getWidth() / 4;
     }
 
     // Called when this View is brought to the foreground. Restore
@@ -153,37 +193,128 @@ class CommonView extends Ui.View {
         Ui.requestUpdate();
     }
 
-    // Quick and dirty word wrap for long titles.  
-    // It makes the assumption that what doesn't fit in one line will 
-    // fit in two.  Things will get ugly beyond that.
-    function drawCenteredTextWithWordWrap(dc, y, font, text) {
-        var lines = 1;
-        var width = dc.getTextWidthInPixels(text, font);
-        var keep = "";
-        if (width > screenWidth) {
-            var space = -1;
-            var subwidth = -1;
-            var done = 0;
-            do {
-                if (space != -1) {
-                    keep = keep + " " + text.substring(0, space);
-                    text = text.substring(space + 1, text.length());
-                }
-                System.println("keep=." + keep + ".");
-                System.println("text=." + text + ".");
-                space = text.find(" ");
-                if (space == null) {
-                    done = 1;
-                } else {
-                    subwidth = dc.getTextWidthInPixels(keep + " " + text.substring(0, space), font);
-                }
-                System.println("subwidth=" + subwidth + " " + screenWidth);
-            } while (done == 0 && subwidth < screenWidth);
-            text = keep.substring(1, keep.length()) + "\n" + text;
-            lines++;
+    function appendToArray(a, i)
+    {
+        var newA = new[a.size() + 1];
+        for (var i = 0; i < a.size(); i++)
+        {
+            newA[i] = a[i];
         }
-        dc.drawText(screenWidth / 2, y, font, text, Graphics.TEXT_JUSTIFY_CENTER);
+        newA[a.size()] = i;
+        return newA;
+    }
+
+    //
+    // wrap text to fit the screen.  Returns a number of lines, none
+    // of which are wider than the screen width using this font.
+    //
+    // this is really ugly, but works.  too many special cases.
+    //
+    function wordWrap(dc, font, text) 
+    {
+        var lines = [];
+        var width = dc.getTextWidthInPixels(text, font);
+        if (width > screenWidth) 
+        {
+            var done = 0;
+            do 
+            {
+                var keep = "";
+                var space = -1;
+                var subwidth = -1;
+                do 
+                {
+                    if (space != -1) {
+                        keep = keep + " " + text.substring(0, space);
+                        text = text.substring(space + 1, text.length());
+                    }
+                    space = text.find(" ");
+                    if (space == null) {
+                        done = 1;
+                    } else {
+                        subwidth = dc.getTextWidthInPixels(keep + " " + text.substring(0, space), font);
+                    }
+                } 
+                while (done == 0 && subwidth < screenWidth);
+                keep = keep.substring(1, keep.length());
+                if (done)
+                {
+                    var both = keep + " " + text;
+                    if (dc.getTextWidthInPixels(both, font) < screenWidth)
+                    {
+                        text = both;
+                        keep = "";
+                    } 
+                }
+                if (keep.length() > 0) { lines = appendToArray(lines, keep); }
+            } 
+            while (done == 0);
+            lines = appendToArray(lines, text);
+        }
+        else
+        {
+            lines = [ text ];
+        }
+
         return lines;
+    }
+
+    //
+    // This does a nice job of drawing a set of fields on the watch display
+    //
+    // inputs:
+    // dc -- drawing context
+    // y -- y offset that this can start using
+    // fields -- array of fields to draw
+    // fieldLabels -- text label for each field (use 4 or less characters)
+    // fieldUnits -- unit text for each field (use 4 or less characters)
+    // fieldFonts -- font for each field
+    // outputs:
+    // updated y
+    //
+    function drawFields(dc, y, fields, fieldLabels, fieldUnits, fieldFonts)
+    {
+        dc.drawLine(0, y, screenWidth, y);
+        for (var i = 0; i < fields.size(); i++) {
+            dc.drawText(0, y, Graphics.FONT_XTINY, fieldLabels[i], Graphics.TEXT_JUSTIFY_LEFT);
+            y += dc.getFontHeight(Graphics.FONT_XTINY) / 3;
+            dc.drawText(quarterWidth * 2, y, fieldFonts[i], fields[i], Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(screenWidth - 1, y + dc.getFontHeight(fieldFonts[i]) - dc.getFontHeight(Graphics.FONT_XTINY) + 3, Graphics.FONT_XTINY, fieldUnits[i], Graphics.TEXT_JUSTIFY_RIGHT);
+            y += dc.getFontHeight(fieldFonts[i]) + 5;
+            dc.setColor(Graphics.COLOR_RED, Graphics.COLOR_WHITE);
+            dc.drawLine(0, y, screenWidth, y);
+            dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        }
+
+        return y;
+    }
+
+    //
+    // This does a nice job of drawing a set of fields that use half of the width of the display
+    //
+    // inputs:
+    // dc -- drawing context
+    // x -- x offset of the left side to use
+    // y -- y offset that this can start using
+    // fields -- array of fields to draw
+    // fieldLabels -- text label for each field (use 4 or less characters)
+    // fieldUnits -- unit text for each field (use 4 or less characters)
+    // fieldFonts -- font for each field
+    // outputs:
+    // updated y
+    //
+    function drawHalfWidthFields(dc, x, y, fields, fieldLabels, fieldFonts)
+    {
+        dc.drawLine(x, y, x + screenWidth / 2, y);
+        for (var i = 0; i < fields.size(); i++) {
+            dc.drawText(x, y, Graphics.FONT_XTINY, fieldLabels[i], Graphics.TEXT_JUSTIFY_LEFT);
+            y += dc.getFontHeight(Graphics.FONT_XTINY) - 3;
+            dc.drawText(x + quarterWidth, y, fieldFonts[i], fields[i], Graphics.TEXT_JUSTIFY_CENTER);
+            y += dc.getFontHeight(fieldFonts[i]);
+            dc.drawLine(0, y, screenWidth, y);
+        }
+
+        return y;
     }
 
     // Called when this View is removed from the screen. Save the
@@ -197,6 +328,57 @@ class CommonView extends Ui.View {
 
         return true;
     }
+
+    function ErrorDialog(text)
+    {
+        new Confirmation(text);
+    }
+
+    //
+    // Map the GPS accuracy into a color
+    //
+    function GpsAccuracyColor(gpsAccuracy)
+    {
+        if ($.gpsAccuracy < 2) 
+        {
+            return Graphics.COLOR_RED;
+        } 
+        else if ($.gpsAccuracy == 2) 
+        {
+            return Graphics.COLOR_YELLOW;
+        } 
+        else 
+        {
+            return Graphics.COLOR_GREEN;
+        }
+    }
+
+    //
+    // Make a HTTP client request to get some JSON from the internet
+    //
+    // input:
+    //  url -- url to request from
+    //  callback -- callback to call when the request is finished
+    //
+    function httpGetJson(url, callback)
+    {
+        System.println("common: httpGetJson() to " + url);
+        var headers = {
+            "Content-Type" => Comm.REQUEST_CONTENT_TYPE_URL_ENCODED,
+            "Accept" => "application/json"
+        };
+        Comm.makeWebRequest(
+            url, 
+            { },
+            {
+                :headers => headers,
+                :method => Comm.HTTP_REQUEST_METHOD_GET,
+                :responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_JSON
+            },
+            method(callback));
+        System.println("common: httpGetJson() done");
+    }
+
 }
 
 class CommonMenuInput extends Ui.MenuInputDelegate {

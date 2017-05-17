@@ -8,6 +8,8 @@ function onPosition(info)
 }
 
 class Sailing extends App.AppBase {
+    var inputDelegate = null;
+
     function initialize() {
         AppBase.initialize();
     }
@@ -22,8 +24,12 @@ class Sailing extends App.AppBase {
 
     // Return the initial view of your application here
     function getInitialView() {
-        var inputDelegate = new SailingAppDelegate();
+        inputDelegate = new SailingAppDelegateGeneric();
         return [ inputDelegate.getCurrentView(), inputDelegate ];
     }
 
+    // call all views asking them to shrink
+    function reduceMemory() {
+        inputDelegate.reduceMemory();
+    }
 }
