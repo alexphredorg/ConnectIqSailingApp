@@ -1,6 +1,8 @@
 using Toybox.WatchUi as Ui;
 using Toybox.Time as Time;
 using Toybox.Application as App;
+using Toybox.Attention;
+using Toybox.Timer;
 
 //
 // Generic input delegate that should work on more watches.  Tested on the HR
@@ -12,32 +14,62 @@ class SailingAppDelegateGeneric extends Ui.BehaviorDelegate {
     var checkedLocation = false;
 
     function initialize() {
+        var viewsDict = {};
+        var viewCount = 0;
+
         // read our settings
         var app = App.getApp();
         var detectedPugetSound = app.getProperty("detectedPugetSound");
         var forcePugetSound = app.getProperty("forcePugetSound");
+        var hideTimerView = app.getProperty("hideTimerView");
+        var hideMarksView = app.getProperty("hideMarksView");
+        var hideTidesView = app.getProperty("hideTidesView");
+        var hideWindsView = app.getProperty("hideWindsView");
+
         if (detectedPugetSound == null) { detectedPugetSound = false; }
         if (forcePugetSound == null) { forcePugetSound = false; }
+        if (hideTimerView == null) { hideTimerView = false; }
+        if (hideMarksView == null) { hideMarksView = false; }
+        if (hideTidesView == null) { hideTidesView = false; }
+        if (hideWindsView == null) { hideWindsView = false; }
 
-        // initialize the list of views here.  currently all views
-        // need to be running at all times, in the future we may
-        // support views that only get initialized when they are in the
-        // foreground
-        var timerView = new TimerView();
-        var marksView = new MarksView();
-        var tidesView = new TidesView();
+        // initialize all views.  At the end of this we have a dict
+        // sorted with the views that we want, plus a size of the dict
+        if (!hideTimerView)
+        {
+            System.println("Timer view: enabled");
+            viewsDict[viewCount] = new TimerView();
+            viewCount++;
+        }
 
-        System.println("detectedPugetSound = " + detectedPugetSound);
-        System.println("forcePugetSound = " + forcePugetSound);
-        if (detectedPugetSound || forcePugetSound)
+        if (!hideMarksView)
         {
-            var windsView = new WindsView();
-            views = [ timerView, marksView, tidesView, windsView ];
+            System.println("Marks view: enabled");
+            viewsDict[viewCount] = new MarksView();
+            viewCount++;
         }
-        else 
+
+        if (!hideTidesView)
         {
-            views = [ timerView, marksView, tidesView ];
+            System.println("Tides view: enabled");
+            viewsDict[viewCount] = new TidesView();
+            viewCount++;
         }
+
+        if ((detectedPugetSound || forcePugetSound) && !hideWindsView)
+        {
+            System.println("Winds view: enabled");
+            viewsDict[viewCount] = new TidesView();
+            viewCount++;
+        }
+        
+        // transfer from the dict to an array
+        views = new [viewCount];
+        for (var i = 0; i < viewCount; i++)
+        {
+            views[i] = viewsDict[i];
+        }
+        viewsDict = null;
 
         // turn on the GPS
         System.println("enable GPS");
@@ -152,13 +184,14 @@ class SailingAppDelegateVAHR extends Ui.BehaviorDelegate {
     var viewIndex = 0;
     var currentView = null;
     var views;
+    var marksView;
 
     function initialize() {
         // read our settings
         var app = App.getApp();
-        var autoDetectPugetSound = app.GetProperty("autoDetectPugetSound");
-        var detectedPugetSound = app.GetProperty("detectedPugetSound");
-        var forcePugetSound = app.GetProperty("forcePugetSound");
+        var autoDetectPugetSound = app.getProperty("autoDetectPugetSound");
+        var detectedPugetSound = app.getProperty("detectedPugetSound");
+        var forcePugetSound = app.getProperty("forcePugetSound");
 
         // initialize the list of views here.  currently all views
         // need to be running at all times, in the future we may

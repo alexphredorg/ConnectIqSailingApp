@@ -34,6 +34,8 @@ class MarksView extends CommonView {
     var reloadFromWeb = false;
     var refreshCount = 1;
     var shrunk = false;
+    var loadError = null;
+    var loadErrorCode = null;
 
     //
     // initialize the view
@@ -159,6 +161,9 @@ class MarksView extends CommonView {
         var calTopoId = app.getProperty("calTopoId");
         var url = "http://www.phred.org:18266/CalTopo/" + calTopoId;
 
+        loadError = null;
+        loadErrorCode = null;
+
         defaultMarks();
         System.println("marks: makeRequest() to " + url);
         var headers = {
@@ -220,6 +225,12 @@ class MarksView extends CommonView {
         {
             // an error occured, reload our old marks
             loadMarks();
+
+            // remember the error
+            var app = App.getApp();
+            var calTopoId = app.getProperty("calTopoId");
+            loadError = "Invalid CalTopoID";
+            loadErrorCode = responseCode;
         }
 
         onMenu();
@@ -314,6 +325,9 @@ class MarksView extends CommonView {
     //
     function measureDistance(point1, point2)
     {
+        System.println("point1 = " + point1[0] + "," + point1[1]);
+        System.println("point2 = " + point2[0] + "," + point2[1]);
+
         var pi = Math.PI;
         var lat1 = (point1[0] * (pi / 180));
         var lon1 = (point1[1] * (pi / 180));
@@ -386,8 +400,25 @@ class MarksView extends CommonView {
     function onMenu() {
         resetMenu();
         recoverFromReduceMemory();
+        var maxMenuItems = maxMenuItems();
+
+
         if (menuLevel == 0)
         {
+            for (var i = 0; i < marks.size(); i++)
+            {
+                System.println("marks[i].size = " + marks[i].size());
+                System.println("maxMenuItems = " + maxMenuItems);
+                if (marks[i].size() > maxMenuItems)
+                {
+                    if (loadError == null) 
+                    {
+                        loadError = "Folder has over 40 items: " + folderNames[i];
+                        loadErrorCode = null;
+                    }
+                }
+            }
+
             // pick a folder out of the list.  
             menu.setTitle("Folders:");
             for (var i = 0; i < marks.size(); i++) 
@@ -395,7 +426,17 @@ class MarksView extends CommonView {
                 addMenuItem(folderNames[i]);
             } 
             addMenuItem("<Load Marks>");
-            addMenuItem("Caltopo ID: " + "GRU6");
+            var app = App.getApp();
+            var calTopoId = app.getProperty("calTopoId");
+            addMenuItem("Caltopo ID: " + calTopoId);
+            if (loadError != null) 
+            {
+                addMenuItem("er: " + loadError);
+            }
+            if (loadErrorCode != null) 
+            {
+                addMenuItem("code: " + loadErrorCode);
+            }
         }
         else if (menuLevel == 1)
         {
@@ -522,6 +563,7 @@ class MarksView extends CommonView {
             var distance = "no GPS";
             var angle = "---";
             var vmg = "---";
+            var relativeAngle = "---";
             //var fieldFonts = [ Graphics.FONT_NUMBER_MEDIUM, Graphics.FONT_NUMBER_MILD, Graphics.FONT_NUMBER_MILD ];
             var fieldFonts = [ Graphics.FONT_NUMBER_MEDIUM ];
             var cogText = (cog * 57.2957795);
@@ -552,9 +594,18 @@ class MarksView extends CommonView {
             self.drawHalfWidthFields(dc, 0, y, [ distance ], [ "dtw" ], fieldFonts);
             y = self.drawHalfWidthFields(dc, quarterWidth * 2, y, [ vmg ], [ "vmg" ], fieldFonts);
             self.drawHalfWidthFields(dc, 0, y, [ angle ], [ "btw" ], fieldFonts);
+            /*
+            System.println(angle);
+            System.println(cogText);
+            if (angle != "---")
+            {
+                relativeAngle = cogText - angle;
+            }
+            self.drawHalfWidthFields(dc, 0, y, [ relativeAngle ], [ "ang" ], fieldFonts);
+            */
             self.drawHalfWidthFields(dc, quarterWidth * 2, y, [ cogText ], [ "cog" ], fieldFonts);
         } 
-        else if (reloadFromWeb)
+        else if (reloadFromWeb && loadError == null)
         {
             //
             // shown when loading marks from the internet
@@ -564,6 +615,29 @@ class MarksView extends CommonView {
             y += dc.getFontHeight(font) + 4;
             dc.drawText(dc.getWidth() / 2, y, font, "Loading Marks...", Graphics.TEXT_JUSTIFY_CENTER);    
         } 
+        else if (loadError != null)
+        {
+            //
+            // shown we had trouble loading marks
+            //
+            var y = 20;
+            var font = Graphics.FONT_MEDIUM;
+            var strings = new [2];
+            strings[0] = "Error while loading marks:";
+            strings[1] = loadError;
+
+            var i;
+            var j;
+            for (i = 0; i < strings.size(); i++)
+            {
+                var substrings = wordWrap(dc, font, strings[i]);
+                for (j = 0; j < substrings.size(); j++) 
+                {
+                    dc.drawText(dc.getWidth() / 2, y, font, substrings[j], Graphics.TEXT_JUSTIFY_CENTER);
+                    y += dc.getFontHeight(font) + 4;
+                }
+            }
+        }
         else 
         {
             //
