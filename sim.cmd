@@ -1,1 +1,1 @@
-@..\..\..\Documents\ConnectIQ\bin\connectiq.bat
+@%HOMEPATH%\ConnectIQ\bin\connectiq.bat

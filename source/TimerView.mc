@@ -24,6 +24,9 @@ class TimerView extends CommonView {
     var quarterWidth;
     // the font that we use when drawing buttons
 
+    var finishTimes = null;
+    var raceTime = null;
+
     // remember when we last vibrated the watch, we do this to make sure that we don't vibrate
     // multiple times in the same second
     var lastVibrationDuration = 0;
@@ -80,10 +83,21 @@ class TimerView extends CommonView {
                         onMenu();
                     }
                 }
-            } else if (timerZero == null && coords[1] > screenHeight - 35) {
-                // this is where the "just sail!" button is located
-                timerDuration = 0;
-                startTimer();
+            } 
+            else if (coords[1] > screenHeight - 35) 
+            {
+                if (timerZero == null)
+                {
+                    // this is where the "just sail!" button is located
+                    timerDuration = 0;
+                    startTimer();
+                }
+                else if (finishTimes != null)
+                {
+                    // this is the "clear finish" button
+                    finishTimes = null;
+                    raceTime = null;
+                }
             }
             Ui.requestUpdate();
         } 
@@ -171,10 +185,33 @@ class TimerView extends CommonView {
     // go into the menu for that.
     //
     function onEnterKey() {
-        if (timerZero == null) {
+        if (timerZero == null) 
+        {
             startTimer();
         } 
+        else
+        {
+            finishTimer();
+        }
         return true;
+    }
+
+    function finishTimer()
+    {
+        if (finishTimes == null)
+        {
+            finishTimes = new[5];
+            finishTimes[0] = Time.now();
+        }
+        else
+        {
+            var c = finishTimes.size();
+            for (var i = 2; i < c; i++)
+            {
+                finishTimes[i - 1] = finishTimes[i];
+            }
+            finishTimes[c - 1] = Time.now();
+        }
     }
 
     //
@@ -294,43 +331,71 @@ class TimerView extends CommonView {
         dc.clear();
         dc.setColor(fgcolor, Graphics.COLOR_TRANSPARENT);
 
-        var fields;
-        var fieldLabels;
-        var fieldUnits;
         var fieldFonts = [ Graphics.FONT_NUMBER_THAI_HOT, Graphics.FONT_NUMBER_HOT ];
         var headingText = ($.heading * 57.2957795);
         if (headingText < 0) { headingText += 360; }
+        var y = 35;
 
         headingText = headingText.format("%02.0f");
-        if (!timerDone) {
-            // view for when timer is counting down
-            fields = [ timerText, headingText ];
-            fieldLabels = [ "timer", "COG" ];
-            fieldUnits = [ "", "deg" ];
+        var knots = $.speed * 1.94384449;
+        var speedText = knots.format("%02.1f");
+        if (!timerDone) 
+        {
+            // view for when timer is counting down has timer and COG
             showSpeed = true;
-        } else {
-            // view for racing
-            var knots = $.speed * 1.94384449;
-            var speedText = knots.format("%02.1f");
-            fields = [ speedText, headingText ];
-            fieldLabels = [ "SOG", "COG" ];
-            fieldUnits = [ "kts", "deg" ];
-            showSpeed = false;
+            y = drawFields(dc, y, [ timerText, headingText ], [ "timer", "COG" ], [ "", "deg" ], fieldFonts);
+        } 
+        else if (finishTimes != null)
+        {
+            showSpeed = false; 
 
+            // view when we have some finish times. COG and SOG are small
+            y = 35;
+            fieldFonts = [ Graphics.FONT_NUMBER_MILD ];
+            self.drawHalfWidthFields(dc, 0, y, [ speedText ], [ "SOG" ], fieldFonts);
+            y = self.drawHalfWidthFields(dc, quarterWidth * 2, y, [ headingText ], [ "COG" ], fieldFonts);
+
+            var lastFinish = null;
+            for (var i = 0; i < finishTimes.size(); i++)
+            {
+                if (finishTimes[i] == null) { continue; }
+
+                var duration = finishTimes[i].subtract(timerZero);
+                var offset;
+                if (lastFinish == null) 
+                {
+                    offset = "*1st*";
+                }
+                else
+                {
+                    offset = lastFinish.subtract(finishTimes[i]);
+                    offset = "+" + offset.value() + " sec";
+                }
+                duration = duration.value();
+                var finishTimerText = durationText(duration);
+
+                var timestruct = Gregorian.info(finishTimes[i], Time.FORMAT_SHORT);
+                var clocktime = timestruct.hour.format("%02u") + ":" + timestruct.min.format("%02u") + ":" + timestruct.sec.format("%02u");
+                dc.drawText(0, y, Graphics.FONT_XTINY, clocktime, Graphics.TEXT_JUSTIFY_LEFT);
+                dc.drawText(screenWidth / 2.5, y, Graphics.FONT_XTINY, finishTimerText, Graphics.TEXT_JUSTIFY_LEFT);
+                dc.drawText(screenWidth, y, Graphics.FONT_XTINY, offset, Graphics.TEXT_JUSTIFY_RIGHT);
+                lastFinish = finishTimes[0];
+
+                y += dc.getFontHeight(Graphics.FONT_XTINY);
+            }
+        } 
+        else 
+        {
+            // view for racing, COG and SOG are big
+            showSpeed = false;
+            y = drawFields(dc, y, [ speedText, headingText ], [ "SOG", "COG" ], [ "knots", "deg" ], fieldFonts);
+        }
+
+        if (showSpeed == false)
+        {
             // this puts the timer in the bottom left (where speed normally is)
             // when the timer has completed.  It counts up at that point.
             dc.drawText(0, dc.getHeight() - dc.getFontHeight(clockSpeedFont), clockSpeedFont, timerText, Graphics.TEXT_JUSTIFY_LEFT);
-        }
-
-        var y = 35;
-        dc.drawLine(0, y, screenWidth, y);
-        for (var i = 0; i < fields.size(); i++) {
-            dc.drawText(0, y, Graphics.FONT_XTINY, fieldLabels[i], Graphics.TEXT_JUSTIFY_LEFT);
-            y += dc.getFontHeight(Graphics.FONT_XTINY) / 3;
-            dc.drawText(quarterWidth * 2, y, fieldFonts[i], fields[i], Graphics.TEXT_JUSTIFY_CENTER);
-            dc.drawText(screenWidth - 1, y + dc.getFontHeight(fieldFonts[i]) - dc.getFontHeight(Graphics.FONT_XTINY) + 3, Graphics.FONT_XTINY, fieldUnits[i], Graphics.TEXT_JUSTIFY_RIGHT);
-            y += dc.getFontHeight(fieldFonts[i]) + 5;
-            dc.drawLine(0, y, screenWidth, y);
         }
 
         // buttons get the top 35 pixels
@@ -349,12 +414,15 @@ class TimerView extends CommonView {
                 dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
                 dc.drawText(quarterWidth * 2, screenHeight - 28, Graphics.FONT_SMALL, "Just Sail", Graphics.TEXT_JUSTIFY_CENTER);
             } else {
-                showClock = true;
+                showClock = false;
+                showSpeed = false;
                 dc.fillRoundedRectangle(2, 2, (quarterWidth * 2) - 2, 33, 2);
                 dc.fillRoundedRectangle((quarterWidth * 2) + 2, 2, (quarterWidth * 2) - 2, 33, 2);
+                if (finishTimes != null) { dc.fillRoundedRectangle(2, screenHeight - 35, screenWidth - 2, screenHeight - 2, 2); }
                 dc.setColor(bgcolor, Graphics.COLOR_TRANSPARENT);
                 dc.drawText(quarterWidth * 1, 7, Graphics.FONT_SMALL, "reset", Graphics.TEXT_JUSTIFY_CENTER);
                 dc.drawText(quarterWidth * 3, 7, Graphics.FONT_SMALL, "sync", Graphics.TEXT_JUSTIFY_CENTER);
+                if (finishTimes != null) { dc.drawText(quarterWidth * 2, screenHeight - 28, Graphics.FONT_SMALL, "clear finish", Graphics.TEXT_JUSTIFY_CENTER); }
             }
         } else {
             showClock = true;

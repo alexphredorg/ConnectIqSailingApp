@@ -37,7 +37,17 @@ const menuSymbols = [
     :menuItem26,
     :menuItem27,
     :menuItem28,
-    :menuItem29
+    :menuItem29,
+    :menuItem30,
+    :menuItem31,
+    :menuItem32,
+    :menuItem33,
+    :menuItem34,
+    :menuItem35,
+    :menuItem36,
+    :menuItem37,
+    :menuItem38,
+    :menuItem39
     ];
 
 var speed = -1;
@@ -96,8 +106,8 @@ class CommonView extends Ui.View {
     }
 
     function errorDialog(errorText) {
-        var dialog = new Confirmation(errorText);
-        Ui.pushView(dialog, new ConfirmationDelegate(), Ui.SLIDE_IMMEDIATE);
+        var dialog = new Ui.Confirmation(errorText);
+        Ui.pushView(dialog, new Ui.ConfirmationDelegate(), Ui.SLIDE_IMMEDIATE);
     }
 
     // called by onMenu to start a new menu
@@ -110,10 +120,15 @@ class CommonView extends Ui.View {
     function addMenuItem(text) {
         menu.addItem(text, $.menuSymbols[cMenuItems]);
         cMenuItems++;
-        if (cMenuItems > menuSymbols.size()) {
+        if (cMenuItems >= menuSymbols.size()) {
             System.println("menu full!!!");
             cMenuItems--;
         }
+    }
+
+    function maxMenuItems() 
+    {
+        return $.menuSymbols.size();
     }
 
     // called after all calls to addMenuItem
@@ -281,7 +296,7 @@ class CommonView extends Ui.View {
             dc.drawText(quarterWidth * 2, y, fieldFonts[i], fields[i], Graphics.TEXT_JUSTIFY_CENTER);
             dc.drawText(screenWidth - 1, y + dc.getFontHeight(fieldFonts[i]) - dc.getFontHeight(Graphics.FONT_XTINY) + 3, Graphics.FONT_XTINY, fieldUnits[i], Graphics.TEXT_JUSTIFY_RIGHT);
             y += dc.getFontHeight(fieldFonts[i]) + 5;
-            dc.setColor(Graphics.COLOR_RED, Graphics.COLOR_WHITE);
+            dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
             dc.drawLine(0, y, screenWidth, y);
             dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         }

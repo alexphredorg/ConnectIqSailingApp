@@ -51,11 +51,65 @@ class CalTopoHandler(tornado.web.RequestHandler):
         if caltopoId == None:
             raise tornado.web.HTTPError(500) 
         http = tornado.httpclient.AsyncHTTPClient()
-        caltopoUrl = "http://caltopo.com/m/" + caltopoId + "?format=json"
+        print("Called by http://:18266/CalTopo/" + caltopoId)
+        caltopoUrl = "https://caltopo.com/m/" + caltopoId + "?format=json"
         print("fetching: " + caltopoUrl)
         http.fetch(caltopoUrl, callback=self.on_response)
-
+    
     def on_response(self, response):
+        if response.error: raise tornado.web.HTTPError(500)
+        mapData = tornado.escape.json_decode(response.body)
+        mapDataFeatures = mapData["features"]
+
+        folders = {}
+        # find all folders first
+        for feature in mapDataFeatures:
+            properties = feature['properties']
+            classType = properties['class']
+            featureId = feature['id']
+            if classType == 'Folder':
+                name = properties['title']
+                folders[featureId] = { 'name':name, 'marks': [] }
+
+        # find all marks second
+        for feature in mapDataFeatures:
+            properties = feature['properties']
+            classType = properties['class']
+            if classType == 'Marker':
+                name = properties['title']
+                if 'description' in properties:
+                    name = name + ':' + properties['description']
+
+                # create a folder if one doesn't exist
+                if 'folderId' not in properties: 
+                    properties['folderId'] = -1
+                    if -1 not in folders:
+                        folders[-1] = { "name":"marks", "marks": [] }
+
+                # load rest of features
+                geometry = feature['geometry']
+                lat = geometry['coordinates'][1]
+                lon = geometry['coordinates'][0]
+
+                # create mark
+                m = {'n':name, 'lat':roundsig(lat), 'lon':roundsig(lon)}
+
+                # update folder
+                folderId = properties['folderId']
+                folders[folderId]["marks"].append(m)
+
+        folderList = []
+        for folderId in folders:
+            folders[folderId]["marks"] = sorted(folders[folderId]["marks"], key=lambda m: m["n"])
+            folderList.append(folders[folderId])
+
+        returnData = {"groups":folderList }
+        json = tornado.escape.json_encode(returnData)
+        self.write(json)
+        self.finish()
+
+
+    def on_response_old_format(self, response):
         if response.error: raise tornado.web.HTTPError(500)
         mapData = tornado.escape.json_decode(response.body)
         mapDataFolder = mapData["Folder"]
@@ -66,8 +120,19 @@ class CalTopoHandler(tornado.web.RequestHandler):
             folders[folder["id"]] = { "name":folder["label"], "marks": [] }
 
         for mark in mapDataMarker:
+            name = mark["label"]
+
+            # incorporate the comment into the name if it was specified
+            if "comments" in mark:
+                name = mark["label"] + ":" + mark["comments"]
+
+            # make a default folder if one wasn't specified
+            if "folderId" not in mark:
+                mark["folderId"] = -1
+                if -1 not in folders:
+                    folders[-1] = { "name":"marks", "marks": [] }
             m = { 
-                "n":mark["label"] + ":" + mark["comments"],
+                "n":name,
                 "lat":roundsig(mark["position"]["lat"]),
                 "lon":roundsig(mark["position"]["lng"])
             }
@@ -76,6 +141,7 @@ class CalTopoHandler(tornado.web.RequestHandler):
 
         folderList = []
         for folderId in folders:
+            folders[folderId]["marks"] = sorted(folders[folderId]["marks"], key=lambda m: m["n"])
             folderList.append(folders[folderId])
 
         returnData = {"groups":folderList }
