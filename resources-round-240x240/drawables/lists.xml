@@ -1,0 +1,23 @@
+<resources>
+    <drawable-list id="timergrid" foreground="Graphics.COLOR_WHITE">
+        <shape type="rectangle" x="0" y="21" width="239" height="1" color="Graphics.COLOR_WHITE" />
+        <shape type="rectangle" x="0" y="55" width="239" height="1" color="Graphics.COLOR_WHITE" />
+        <shape type="rectangle" x="0" y="140" width="239" height="1" color="Graphics.COLOR_WHITE" />
+        <shape type="rectangle" x="0" y="215" width="239" height="1" color="Graphics.COLOR_WHITE" />
+    </drawable-list>
+    <drawable-list id="finishgrid" foreground="Graphics.COLOR_WHITE">
+        <shape type="rectangle" x="0" y="21" width="239" height="1" color="Graphics.COLOR_WHITE" />
+        <shape type="rectangle" x="0" y="55" width="239" height="1" color="Graphics.COLOR_WHITE" />
+        <shape type="rectangle" x="0" y="120" width="239" height="1" color="Graphics.COLOR_WHITE" />
+        <shape type="rectangle" x="0" y="215" width="239" height="1" color="Graphics.COLOR_WHITE" />
+    </drawable-list>
+    <drawable-list id="tidesgrid" foreground="Graphics.COLOR_WHITE">
+        <shape type="rectangle" x="0" y="20" width="239" height="1" color="Graphics.COLOR_WHITE" />
+        <shape type="rectangle" x="0" y="214" width="239" height="1" color="Graphics.COLOR_WHITE" />
+    </drawable-list>
+    <drawable-list id="marksgrid" foreground="Graphics.COLOR_WHITE">
+        <shape type="rectangle" x="0" y="40" width="239" height="1" color="Graphics.COLOR_WHITE" />
+        <shape type="rectangle" x="0" y="116" width="239" height="1" color="Graphics.COLOR_WHITE" />
+        <shape type="rectangle" x="0" y="200" width="239" height="1" color="Graphics.COLOR_WHITE" />
+    </drawable-list>
+</resources>

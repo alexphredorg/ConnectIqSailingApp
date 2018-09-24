@@ -12,10 +12,19 @@ class SailingAppDelegateGeneric extends Ui.BehaviorDelegate {
     var currentView = null;
     var views;
     var checkedLocation = false;
+    var oneButtonMode = false;
 
     function initialize() {
         var viewsDict = {};
         var viewCount = 0;
+
+        // this helps to detect VA3 which is a weird watch with only one
+        // physical button
+        var settings = System.getDeviceSettings();
+        if (settings.inputButtons == 1 && settings.isTouchScreen)
+        {
+            oneButtonMode = true;
+        }
 
         // read our settings
         var app = App.getApp();
@@ -32,6 +41,8 @@ class SailingAppDelegateGeneric extends Ui.BehaviorDelegate {
         if (hideMarksView == null) { hideMarksView = false; }
         if (hideTidesView == null) { hideTidesView = false; }
         if (hideWindsView == null) { hideWindsView = false; }
+
+        forcePugetSound = true;
 
         // initialize all views.  At the end of this we have a dict
         // sorted with the views that we want, plus a size of the dict
@@ -59,7 +70,7 @@ class SailingAppDelegateGeneric extends Ui.BehaviorDelegate {
         if ((detectedPugetSound || forcePugetSound) && !hideWindsView)
         {
             System.println("Winds view: enabled");
-            viewsDict[viewCount] = new TidesView();
+            viewsDict[viewCount] = new WindsView();
             viewCount++;
         }
         
@@ -127,7 +138,8 @@ class SailingAppDelegateGeneric extends Ui.BehaviorDelegate {
     }
 
     // forward button presses to the current view
-    function onKey(evt) {
+    function onKey(evt) 
+    {
         var key = evt.getKey();
         if (key == KEY_ESC) {
             currentView.onEscKey();
@@ -138,13 +150,30 @@ class SailingAppDelegateGeneric extends Ui.BehaviorDelegate {
     }
 
     // forward swipe events to the current view
-    function onSwipe(evt) {
+    function onSwipe(evt) 
+    {
         var swipe = evt.getDirection();
+        var settings = System.getDeviceSettings();
 
-        if (swipe == SWIPE_UP) {
+        System.println("swipe: evt.getDirection()=" + swipe);
+
+        if (swipe == SWIPE_UP) 
+        {
             currentView.onSwipeUp();
             return true;
-        } else if (swipe == SWIPE_DOWN) {
+        } 
+        else if (swipe == SWIPE_DOWN) 
+        {
+            currentView.onSwipeDown();
+            return true;
+        } 
+        else if (oneButtonMode && swipe == SWIPE_LEFT)
+        {
+            currentView.onSwipeUp();
+            return true;
+        }
+        else if (oneButtonMode && swipe == SWIPE_RIGHT)
+        {
             currentView.onSwipeDown();
             return true;
         }
@@ -152,7 +181,8 @@ class SailingAppDelegateGeneric extends Ui.BehaviorDelegate {
     }
 
     // change to the new view
-    function onNextPage() {
+    function onNextPage() 
+    {
         viewIndex = (viewIndex + 1) % views.size();
         Ui.switchToView(getCurrentView(), self, Ui.SLIDE_LEFT);
     }
@@ -411,15 +441,76 @@ class SailingAppDelegateVAHR extends Ui.BehaviorDelegate {
     }
 }
 
-class ConfirmQuitDelegate extends Ui.ConfirmationDelegate {
-    function initialize() {
+var quitAfterSave = false;
+class ConfirmQuitDelegate extends Ui.ConfirmationDelegate 
+{
+    function initialize() 
+    {
         return Ui.ConfirmationDelegate.initialize();
     }
-    function onResponse(value) {
-        if (value == 0) {
+    function onResponse(value) 
+    {
+        if (value == 0) 
+        {
             return;
         }
-        else {
+        else 
+        {
+            if ($.session != null)
+            {
+                $.quitAfterSave = true;
+                var dialog = new Ui.Confirmation("Save track?");
+                Ui.pushView(dialog, new ConfirmSaveDelegate(), Ui.SLIDE_IMMEDIATE);
+            }
+            else
+            {
+                System.exit();
+            }
+        }
+    }
+}
+
+class ConfirmResetDelegate extends Ui.ConfirmationDelegate 
+{
+    function initialize() 
+    {
+        return Ui.ConfirmationDelegate.initialize();
+    }
+    function onResponse(value) 
+    {
+        if (value != 0) 
+        {
+            if ($.session)
+            {
+                var dialog = new Ui.Confirmation("Save track?");
+                Ui.pushView(dialog, new ConfirmSaveDelegate(), Ui.SLIDE_IMMEDIATE);
+            }
+            else
+            {
+                $.timer.reset();
+            }
+        }
+    }
+}
+
+class ConfirmSaveDelegate extends Ui.ConfirmationDelegate 
+{
+    function initialize() 
+    {
+        return Ui.ConfirmationDelegate.initialize();
+    }
+    function onResponse(value) 
+    {
+        $.session.stop();
+        if (value != 0) 
+        {
+            $.session.save();
+            System.println("saving session");
+        }
+        $.session = null;
+        $.timer.reset();
+        if ($.quitAfterSave)
+        {
             System.exit();
         }
     }

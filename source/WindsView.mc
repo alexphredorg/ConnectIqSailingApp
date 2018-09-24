@@ -15,10 +15,12 @@ using Toybox.Communications as Comm;
 class WindsView extends CommonView {
     // this is all hardcoded to the vivoactive HR screen
     const SPEED_FONT = Graphics.FONT_NUMBER_HOT;
+    const SPEED_FONT_ROUND = Graphics.FONT_NUMBER_MEDIUM;
     const TITLE_FONT = Graphics.FONT_XTINY;
     const DIR_FONT = Graphics.FONT_MEDIUM;
     const WINDTIME_FONT = Graphics.FONT_XTINY;
-
+    const MAX_SCREEN_WIDTH = 148;
+    const MIN_SCREEN_HEIGHT = 205;
     //
     // windData gets the raw data that is downloaded from the internet
     // Fields:
@@ -34,12 +36,26 @@ class WindsView extends CommonView {
     // what time did we last refresh the wind data?
     var lastDataRefresh;
 
+    var screenBiasX = 0;
+    var screenBiasY = 0;
+    var speedFont = SPEED_FONT;
+
     //
     // initialize the view
     //
     function initialize() {
         CommonView.initialize("wind");
         lastDataRefresh = Time.today();
+        highSpeedRefresh = false;
+
+        // hack to fit larger screens as if they were vivoactive hr
+        if (screenWidth > MAX_SCREEN_WIDTH) 
+        {
+            screenBiasX = (screenWidth - MAX_SCREEN_WIDTH) / 2;
+            screenWidth = MAX_SCREEN_WIDTH;
+            screenBiasY = ((screenHeight - MIN_SCREEN_HEIGHT) / 2) + 20;
+            speedFont = SPEED_FONT_ROUND;
+        }
 
         // override the clock font
         clockSpeedFont = WINDTIME_FONT;
@@ -143,10 +159,21 @@ class WindsView extends CommonView {
         Ui.requestUpdate();
     }
 
+    function drawLine(dc, x0, y0, x1, y1)
+    {
+        dc.drawLine(x0 + screenBiasX, y0 + screenBiasY, x1 + screenBiasX, y1 + screenBiasY);
+    }
+
+    function drawText(dc, x, y, font, text, justification)
+    {
+        dc.drawText(x + screenBiasX, y + screenBiasY, font, text, justification);
+    }
+
     //
     // Update the view
     //
     function onUpdate(dc) {
+        CommonView.onUpdate(dc);
         // see how long it has been since our last update.  If it has been a while then do the update.
         if (Time.now().subtract(lastDataRefresh).value() > 600)
         {
@@ -165,10 +192,6 @@ class WindsView extends CommonView {
         var center = screenWidth / 2;
         var cellHeight = 0;
 
-        dc.setColor(bgcolor, bgcolor);
-        dc.clear();
-        dc.setColor(fgcolor, Graphics.COLOR_TRANSPARENT);
-
         if ((windData != null) && (windData.size() > 0)) {
             // The rendering is tweaked to get 3 wind stations onto the 
             // screen at once.  
@@ -177,7 +200,7 @@ class WindsView extends CommonView {
                 // this just tightens up things a tad
                 y--;
 
-                dc.drawLine(0, y-1, screenWidth, y-1);
+                drawLine(dc, 0, y-1, screenWidth, y-1);
                 // what we'll show
                 var wind = windData[i];
                 var speed = "---";
@@ -202,20 +225,19 @@ class WindsView extends CommonView {
                 // render it.  
 
                 // station ID on top
-                dc.drawText(center, y, TITLE_FONT, stationName, Graphics.TEXT_JUSTIFY_CENTER);
+                drawText(dc, center, y, TITLE_FONT, stationName, Graphics.TEXT_JUSTIFY_CENTER);
                 y += dc.getFontHeight(TITLE_FONT) - 7;
-                //y += drawCenteredTextWithWordWrap(dc, y, TITLE_FONT, stationName) * dc.getFontHeight(TITLE_FONT);
 
                 // show speed, dir, time left to right
-                dc.drawText(85, y, SPEED_FONT, speed, Graphics.TEXT_JUSTIFY_RIGHT);
+                drawText(dc, 85, y, speedFont, speed, Graphics.TEXT_JUSTIFY_RIGHT);
 
                 // time
-                dc.drawText(90, y + 4, WINDTIME_FONT, windtime, Graphics.TEXT_JUSTIFY_LEFT);
+                drawText(dc, 90, y + 4, WINDTIME_FONT, windtime, Graphics.TEXT_JUSTIFY_LEFT);
 
-                y += dc.getFontHeight(SPEED_FONT);
+                y += dc.getFontHeight(speedFont);
 
                 // direction
-                dc.drawText(90, y - dc.getFontHeight(DIR_FONT) - 4, DIR_FONT, dir, Graphics.TEXT_JUSTIFY_LEFT);
+                drawText(dc, 90, y - dc.getFontHeight(DIR_FONT) - 4, DIR_FONT, dir, Graphics.TEXT_JUSTIFY_LEFT);
 
                 if (i == iWindData) { cellHeight = y; }
             }
@@ -223,11 +245,10 @@ class WindsView extends CommonView {
             var y = 0;
             var font = Graphics.FONT_LARGE;
             y += dc.getFontHeight(font) + 4;
-            dc.drawText(dc.getWidth() / 2, y, font, "Loading", Graphics.TEXT_JUSTIFY_CENTER);    
+            drawText(dc, center, y, font, "Loading", Graphics.TEXT_JUSTIFY_CENTER);    
             y += dc.getFontHeight(font) + 4;
-            dc.drawText(dc.getWidth() / 2, y, font, "Wind Stations", Graphics.TEXT_JUSTIFY_CENTER);    
+            drawText(dc, center, y, font, "Wind Stations", Graphics.TEXT_JUSTIFY_CENTER);    
             y += dc.getFontHeight(font) + 4;
         }
-        CommonView.onUpdate(dc);
     }
 }

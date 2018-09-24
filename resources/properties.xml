@@ -1,5 +1,5 @@
 <properties>
-    <property id="appVersion" type="string">2.2</property>
+    <property id="appVersion" type="string">2.31</property>
     <property id="calTopoId" type="string">GRU6</property>
     <property id="forcePugetSound" type="boolean">false</property>
     <property id="hideTimerView" type="boolean">false</property>

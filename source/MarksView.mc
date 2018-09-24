@@ -36,12 +36,16 @@ class MarksView extends CommonView {
     var shrunk = false;
     var loadError = null;
     var loadErrorCode = null;
+    var errorMode = false;
+    var errorText1 = "";
+    var errorText2 = "";
+    var viewErrorMode = null;
 
     //
     // initialize the view
     //
     function initialize() {
-        showSeconds = true;
+        highSpeedRefresh = true;
         CommonView.initialize("marks");
         loadMarks();
         newMarkSelected();
@@ -64,11 +68,13 @@ class MarksView extends CommonView {
     // Clear the stored set of marks
     function defaultMarks()
     {
+        System.println("in defaultMarks()");
         folderNames = [];
         marks = [];
         selectedMark = -1;
         selectedFolder = -1;
         folderMarks = null;
+        setMode(true, "No Mark Selected", "Press Menu to start");
     }
 
     //
@@ -229,8 +235,7 @@ class MarksView extends CommonView {
             // remember the error
             var app = App.getApp();
             var calTopoId = app.getProperty("calTopoId");
-            loadError = "Invalid CalTopoID";
-            loadErrorCode = responseCode;
+            setMode(true, "Invalid CalTopoID", "rc=" + responseCode);
         }
 
         onMenu();
@@ -325,8 +330,8 @@ class MarksView extends CommonView {
     //
     function measureDistance(point1, point2)
     {
-        System.println("point1 = " + point1[0] + "," + point1[1]);
-        System.println("point2 = " + point2[0] + "," + point2[1]);
+        //System.println("point1 = " + point1[0] + "," + point1[1]);
+        //System.println("point2 = " + point2[0] + "," + point2[1]);
 
         var pi = Math.PI;
         var lat1 = (point1[0] * (pi / 180));
@@ -426,6 +431,7 @@ class MarksView extends CommonView {
                 addMenuItem(folderNames[i]);
             } 
             addMenuItem("<Load Marks>");
+            addMenuItem("<Quit App>");
             var app = App.getApp();
             var calTopoId = app.getProperty("calTopoId");
             addMenuItem("Caltopo ID: " + calTopoId);
@@ -462,14 +468,20 @@ class MarksView extends CommonView {
         {
             if (index >= marks.size())
             {
-                if (index == marks.size() + 1)
+                switch (index)
                 {
-                    reduceMemory();
-                }
-                else
-                {
-                    reloadFromWeb = true;
-                    requestMarkDataFromCaltopo();        
+                    case marks.size():
+                        // <load marks>
+                        reloadFromWeb = true;
+                        requestMarkDataFromCaltopo();        
+                        break;
+                    case marks.size() + 1:
+                        // <quit>
+                        quitDialog();
+                        break;
+                    default:
+                        reduceMemory();
+                        break;
                 }
             }
             else
@@ -528,127 +540,124 @@ class MarksView extends CommonView {
         }
     }
 
+    // Load your resources here
+    function onLayout(dc) {
+        System.println("onLayout: viewErrorMode=" + viewErrorMode);
+        System.println("onLayout: errorMode=" + errorMode);
+        if (viewErrorMode != errorMode)
+        {
+            if (errorMode)
+            {
+                setLayout(Rez.Layouts.MarksViewError(dc));
+            }
+            else
+            {
+                setLayout(Rez.Layouts.MarksView(dc));
+            }
+            viewErrorMode = errorMode;
+        }
+        
+        CommonView.onLayout(dc);
+    }
+
+    function setMode(errorMode, errorText1, errorText2)
+    {
+        self.errorText1 = errorText1;
+        self.errorText2 = errorText2;
+        self.errorMode = errorMode;
+    }
+
+    //
+    // this is an ugly mess and should be cleaned up, but it works
+    // for now
+    //
+    function setModeFromFlags()
+    {
+        if (!reloadFromWeb && (folderMarks != null) && (folderMarks.size() > 0))
+        {
+            setMode(false, "", "");
+        } 
+        else if (reloadFromWeb)
+        {
+            setMode(true, "Loading Marks", "");
+        }
+        else if (self.position == null)
+        {
+            setMode(true, "No GPS Signal", "");
+        }
+        else if (folderMarks == null)
+        {
+            // setMode was called on the load failure, and set the string
+        }
+    }
+
     //
     // Update the view
     //
     function onUpdate(dc) {
-        var bgcolor = Graphics.COLOR_BLACK;
-        var fgcolor = Graphics.COLOR_WHITE;
+        setModeFromFlags();
 
-        dc.setColor(bgcolor, bgcolor);
-        dc.clear();
-        dc.setColor(fgcolor, Graphics.COLOR_TRANSPARENT);
-
-        var y = 0;
-        var center = screenWidth / 2;
-        var cellHeight = 0;
-
-        dc.setColor(bgcolor, bgcolor);
-        dc.clear();
-        dc.setColor(fgcolor, Graphics.COLOR_TRANSPARENT);
+        if (viewErrorMode != errorMode)
+        {
+            onLayout(dc);
+        }
 
         // word wrap the mark name if we only have a string
         if (markName instanceof Toybox.Lang.String)
         {
             markName = CommonView.wordWrap(dc, Graphics.FONT_XTINY, markName);
         }
+        var markNameIndex = (refreshCount / 20) % markName.size();
+        refreshCount++;
 
-        if (!reloadFromWeb && (folderMarks != null) && (folderMarks.size() > 0)) 
+        var markIdText = "---";
+        var markNameText = "(no mark)";
+
+        if (selectedFolder >= 0 && markNameIndex >= 0)
+        {
+            markIdText = folderNames[selectedFolder] + "/" + markShortname;
+            markNameText = markName[markNameIndex];
+        }
+
+        CommonView.setValueText("MarkId", markIdText);
+        CommonView.setValueText("MarkName", markNameText);
+
+        if (errorMode)
+        {
+            CommonView.setValueText("ErrorLabel1", errorText1);
+            CommonView.setValueText("ErrorLabel2", errorText2);
+        }
+        else
         {
             //
-            // normal view with a mark selected
+            // normal view with a mark selected, this uses the layout
             //
-            dc.drawLine(0, y-1, screenWidth, y-1);
-            // what we'll show
-            var distance = "no GPS";
+
+            var distance = "---";
             var angle = "---";
             var vmg = "---";
             var relativeAngle = "---";
-            //var fieldFonts = [ Graphics.FONT_NUMBER_MEDIUM, Graphics.FONT_NUMBER_MILD, Graphics.FONT_NUMBER_MILD ];
-            var fieldFonts = [ Graphics.FONT_NUMBER_MEDIUM ];
-            var cogText = (cog * 57.2957795);
-            if (cogText < 0) { cogText += 360; }
-            cogText = cogText.toNumber();
-
+            
             if (position != null)
             {
                 var a = measureDistance(position, desiredPosition);
-                distance = a[0].format("%.1f");
+                if (a[0] > 1000)
+                {
+                    distance = a[0].format("%0.0f");
+                }
+                else 
+                {
+                    distance = a[0].format("%0.1f");
+                }
                 angle = a[1].toNumber();
                 vmg = self.speed * 1.94384449 * Math.cos(self.cog - (angle / 57.2957795));
                 vmg = vmg.format("%02.1f");
+                angle = a[1].format("%0.0f");
             } 
-            else 
-            {
-                fieldFonts = [ Graphics.FONT_LARGE ];
-            }
 
-            // station ID on top
-            dc.drawText(center, y, Graphics.FONT_MEDIUM, folderNames[selectedFolder] + "/" + markShortname, Graphics.TEXT_JUSTIFY_CENTER);
-            y += dc.getFontHeight(Graphics.FONT_MEDIUM) - 5;
-            var markNameIndex = (refreshCount / 20) % markName.size();
-            dc.drawText(center, y, Graphics.FONT_XTINY, markName[markNameIndex], Graphics.TEXT_JUSTIFY_CENTER);
-            refreshCount++;
-            y += dc.getFontHeight(Graphics.FONT_XTINY);
-
-            self.drawHalfWidthFields(dc, 0, y, [ distance ], [ "dtw" ], fieldFonts);
-            y = self.drawHalfWidthFields(dc, quarterWidth * 2, y, [ vmg ], [ "vmg" ], fieldFonts);
-            self.drawHalfWidthFields(dc, 0, y, [ angle ], [ "btw" ], fieldFonts);
-            /*
-            System.println(angle);
-            System.println(cogText);
-            if (angle != "---")
-            {
-                relativeAngle = cogText - angle;
-            }
-            self.drawHalfWidthFields(dc, 0, y, [ relativeAngle ], [ "ang" ], fieldFonts);
-            */
-            self.drawHalfWidthFields(dc, quarterWidth * 2, y, [ cogText ], [ "cog" ], fieldFonts);
-        } 
-        else if (reloadFromWeb && loadError == null)
-        {
-            //
-            // shown when loading marks from the internet
-            //
-            var y = 20;
-            var font = Graphics.FONT_MEDIUM;
-            y += dc.getFontHeight(font) + 4;
-            dc.drawText(dc.getWidth() / 2, y, font, "Loading Marks...", Graphics.TEXT_JUSTIFY_CENTER);    
-        } 
-        else if (loadError != null)
-        {
-            //
-            // shown we had trouble loading marks
-            //
-            var y = 20;
-            var font = Graphics.FONT_MEDIUM;
-            var strings = new [2];
-            strings[0] = "Error while loading marks:";
-            strings[1] = loadError;
-
-            var i;
-            var j;
-            for (i = 0; i < strings.size(); i++)
-            {
-                var substrings = wordWrap(dc, font, strings[i]);
-                for (j = 0; j < substrings.size(); j++) 
-                {
-                    dc.drawText(dc.getWidth() / 2, y, font, substrings[j], Graphics.TEXT_JUSTIFY_CENTER);
-                    y += dc.getFontHeight(font) + 4;
-                }
-            }
-        }
-        else 
-        {
-            //
-            // shown when no mark is selected.  Prompt the user to get started.
-            //
-            var y = 20;
-            var font = Graphics.FONT_MEDIUM;
-            y += dc.getFontHeight(font) + 4;
-            dc.drawText(dc.getWidth() / 2, y, font, "No mark selected", Graphics.TEXT_JUSTIFY_CENTER);    
-            y += dc.getFontHeight(font) + 4;
-            dc.drawText(dc.getWidth() / 2, y, font, "Press Menu", Graphics.TEXT_JUSTIFY_CENTER);    
+            CommonView.setValueText("BtwValue", angle);
+            CommonView.setValueText("VmgValue", vmg);
+            CommonView.setValueText("DtwValue", distance);
         }
 
         // draw a G in the upper left showing GPS status

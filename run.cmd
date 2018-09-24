@@ -1,1 +1,1 @@
-monkeydo bin\SailingApp.prg vivoactive_hr
+monkeydo bin\SailingApp_vahr.prg vivoactive_hr

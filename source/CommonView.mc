@@ -57,21 +57,25 @@ var gpsAccuracy = 0;
 
 class CommonView extends Ui.View {
     // screen width
-    var screenWidth = 148;
+    var screenWidth;
     var quarterWidth;
     var screenHeight;
     var cMenuItems = 0;
     var menu = null;
     var viewName;
-    var showSeconds = false;
-    var showClock = true;
-    var showSpeed = true;
+    var highSpeedRefresh = false;
     var clockSpeedFont = Graphics.FONT_MEDIUM;
     var updateTimer;
 
     // initialize the view
     function initialize(viewName) {
-        self.viewName = viewName;
+        self.viewName = viewName;   
+        var settings = System.getDeviceSettings();
+        self.screenWidth = settings.screenWidth;
+        self.screenHeight = settings.screenHeight;
+        self.quarterWidth = self.screenWidth / 4;   
+        System.println("screenWidth = " + screenWidth);
+        System.println("screenHeight = " + screenHeight);
         View.initialize();
     }
 
@@ -117,6 +121,7 @@ class CommonView extends Ui.View {
     }
 
     // called for each menu item to be shown to the user
+    // returns the index of the item (used on the callback)
     function addMenuItem(text) {
         menu.addItem(text, $.menuSymbols[cMenuItems]);
         cMenuItems++;
@@ -124,6 +129,7 @@ class CommonView extends Ui.View {
             System.println("menu full!!!");
             cMenuItems--;
         }
+        return (cMenuItems - 1);
     }
 
     function maxMenuItems() 
@@ -158,9 +164,6 @@ class CommonView extends Ui.View {
 
     // Load your resources here
     function onLayout(dc) {
-        screenWidth = dc.getWidth();
-        screenHeight = dc.getHeight();
-        quarterWidth = dc.getWidth() / 4;
     }
 
     // Called when this View is brought to the foreground. Restore
@@ -169,9 +172,9 @@ class CommonView extends Ui.View {
     function onShow() {
         System.println("showing: " + viewName);
         updateTimer = new Timer.Timer();
-        if (showSeconds) {
-            // onUpdate every 100ms
-            updateTimer.start(method(:refreshView), 100, true);
+        if (highSpeedRefresh) {
+            // onUpdate every 250ms
+            updateTimer.start(method(:refreshView), 250, true);
         } else {
             // onUpdate every 10sec
             updateTimer.start(method(:refreshView), 10000, true);
@@ -179,28 +182,74 @@ class CommonView extends Ui.View {
         return true;
     }
 
+    function setValueText(id, text)
+    {
+        var d = Ui.View.findDrawableById(id);
+        //System.println("setValueText(" + id + ", " + text + ")");
+        if (text == null)
+        {
+            text = "";
+        }
+        if (d != null)
+        {
+            d.setText(text);
+        }
+    }
+
     // Update the view
     function onUpdate(dc) {
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        Ui.View.onUpdate(dc);
+        var view;
 
-        if (showSpeed) {
-            // speed
-            if ($.speed != -1) {
+        // speed label
+        view = Ui.View.findDrawableById("SogValue");
+        if (view != null)
+        {
+            if ($.speed == -1)
+            {
+                view.setText("--");
+            }
+            else
+            {
                 var knots = $.speed * 1.94384449;
-                var speedText = knots.format("%02.1f") + "kts";
-                dc.drawText(0, dc.getHeight() - dc.getFontHeight(clockSpeedFont), clockSpeedFont, speedText, Graphics.TEXT_JUSTIFY_LEFT);
+                var speedText = knots.format("%02.1f");
+                var sogUnits = Ui.View.findDrawableById("SogUnitsLabel");
+                if (sogUnits == null)
+                {
+                    speedText = speedText + "kts";
+                }
+                view.setText(speedText);
             }
         }
 
-        // clock
-        if (showClock) {
+        // heading label
+        view = Ui.View.findDrawableById("CogValue");
+        if (view != null)
+        {
+            var headingText = ($.heading * 57.2957795);
+            if (headingText < 0) { headingText += 360; }
+            headingText = headingText.format("%02.0f");
+            view.setText(headingText);
+        }
+
+        // clock label no seconds
+        view = View.findDrawableById("ClockValue");
+        if (view != null)
+        {
             var now = Time.now();
             var timestruct = Gregorian.info(now, Time.FORMAT_SHORT);
-            var clocktime = timestruct.hour.format("%02u") + ":" + timestruct.min.format("%02u");
-            if (showSeconds) {
-                clocktime = clocktime + ":" + timestruct.sec.format("%02u");
-            }
-            dc.drawText(screenWidth - 1, dc.getHeight() - dc.getFontHeight(clockSpeedFont), clockSpeedFont, clocktime, Graphics.TEXT_JUSTIFY_RIGHT);
+            var clockTime = timestruct.hour.format("%02u") + ":" + timestruct.min.format("%02u");
+            view.setText(clockTime);
+        }
+
+        // clock label with seconds
+        view = View.findDrawableById("ClockValueWithSeconds");
+        if (view != null)
+        {
+            var now = Time.now();
+            var timestruct = Gregorian.info(now, Time.FORMAT_SHORT);
+            var clockTime = timestruct.hour.format("%02u") + ":" + timestruct.min.format("%02u") + ":" + timestruct.sec.format("%02u");
+            view.setText(clockTime);
         }
     }
 

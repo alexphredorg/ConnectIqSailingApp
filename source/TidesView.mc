@@ -21,6 +21,8 @@ class TidesView extends CommonView {
     const TIDE_NOW_POINT = ((TIDE_BATCH_SECONDS / TIDE_POINT_PERIOD) * TIDE_BACK_BATCHES) + 1;
     const TIDE_HIGHLIGHT_ROWS = 9;
     const TIDE_GRAPH_START = TIDE_POINTS_PER_BATCH * 1;
+    const MAX_SCREEN_WIDTH = 180;
+    const MIN_SCREEN_HEIGHT = 205;
 
     // vertical screen area for tide chart
     const TIDE_PIXELS = 50;
@@ -69,17 +71,34 @@ class TidesView extends CommonView {
     var stationName = null;
     var refreshCount = 1;
 
+    // menu item IDs
+    var quitMenuItem = -1;
+    var findStationsMenuItem = -1;
+
     // GPS data
     var position = null;
 
     // are we getting data from the internet?
     var fOnline = false;
 
+    // shift for wide screens
+    var screenBiasX = 0;
+    var screenBiasY = 0;
+
     //
     // initialize the view
     //
     function initialize() {
+        highSpeedRefresh = false;
         CommonView.initialize("tides");
+
+        // this class makes assumptions that don't work on wider screens
+        if (screenWidth > MAX_SCREEN_WIDTH) 
+        {
+            screenBiasX = (screenWidth - MAX_SCREEN_WIDTH) / 2;
+            screenWidth = MAX_SCREEN_WIDTH;
+            screenBiasY = (screenHeight - MIN_SCREEN_HEIGHT) / 2;
+        }
 
         timer = new Timer.Timer();
 
@@ -144,6 +163,9 @@ class TidesView extends CommonView {
 
         if (connected)
         {
+            quitMenuItem = -1;
+            findStationsMenuItem = -1;
+
             var stationList = getTideStationList();
             if (stationList == null) 
             {
@@ -157,8 +179,10 @@ class TidesView extends CommonView {
 
             if (connected && position != null)
             {
-                addMenuItem("<Find Nearby Stations>");
+                findStationsMenuItem = addMenuItem("<Find Nearby Stations>");
             }
+
+            quitMenuItem = addMenuItem("<Quit App>");
             showMenu();
         }
         else
@@ -185,10 +209,14 @@ class TidesView extends CommonView {
             System.println("selecting station id: " + stationList[stationIndex]["id"]);
             requestStationInfo(stationList[stationIndex]["id"]);
         }
-        else if (stationIndex == stationList.size())
+        else if (stationIndex == findStationsMenuItem)
         {
             // get a new list of stations
             requestStationList();
+        }
+        else if (stationIndex == quitMenuItem)
+        {
+            quitDialog();
         }
     }
 
@@ -561,23 +589,28 @@ class TidesView extends CommonView {
         y += dc.getFontHeight(font) + 4;
         for (var i = 0; i < textArray.size(); i++)
         {
-            dc.drawText(screenWidth / 2, y, font, textArray[i], Graphics.TEXT_JUSTIFY_CENTER);    
+            dc.drawText(screenWidth / 2 + screenBiasX, y, font, textArray[i], Graphics.TEXT_JUSTIFY_CENTER);    
             y += dc.getFontHeight(font);
         }
         return y;
+    }
+
+    // Load your resources here
+    function onLayout(dc) {
+        Ui.View.setLayout(Rez.Layouts.TidesView(dc));
+        CommonView.onLayout(dc);
     }
 
     //
     // Render the view
     //
     function onUpdate(dc) {
+        // CommonView draws the time and boat speed
+        CommonView.onUpdate(dc);
+
         var bgcolor = Graphics.COLOR_BLACK;
         var connected = System.getDeviceSettings().phoneConnected;
         var fgcolor = Graphics.COLOR_WHITE;
-
-        dc.setColor(bgcolor, bgcolor);
-        dc.clear();
-        dc.setColor(fgcolor, Graphics.COLOR_TRANSPARENT);
 
         if (stationName instanceof Toybox.Lang.String)
         {
@@ -594,7 +627,7 @@ class TidesView extends CommonView {
             var y = self.renderText(dc, font, [ "Computing", "Tides" ]);
             var dots = "";
             for (var i = 0; i < batch; i++) { dots = dots + "."; }
-            dc.drawText(screenWidth / 2, y, font, dots, Graphics.TEXT_JUSTIFY_CENTER);    
+            dc.drawText(screenWidth / 2 + screenBiasX, y, font, dots, Graphics.TEXT_JUSTIFY_CENTER);    
         } 
         else if (fOnline)
         {
@@ -628,13 +661,13 @@ class TidesView extends CommonView {
             dc.setColor(fgcolor, Graphics.COLOR_TRANSPARENT);
             var stationNameIndex = (refreshCount / 2) % stationName.size();
             refreshCount++;
-            dc.drawText(screenWidth / 2, 0, TIDE_FONT, stationName[stationNameIndex], Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(screenWidth / 2 + screenBiasX, screenBiasY, TIDE_FONT, stationName[stationNameIndex], Graphics.TEXT_JUSTIFY_CENTER);
 
             // below that is a tide graph that is TIDE_PIXELs tall.  The 
             // graph is scaled to fit our tides.
 
             var scaleFactor = TIDE_PIXELS / (maxTidalHeight - minTidalHeight);
-            var graphTop = fontHeight + 3;
+            var graphTop = screenBiasY + fontHeight + 3;
             var graphBottom = graphTop + TIDE_PIXELS;
             // tide height at the time closest to now
             var nowHeight = 0;
@@ -644,7 +677,7 @@ class TidesView extends CommonView {
             // draw out the points in the tide graph
             for (var x = tideGraphStart; x < tideGraphEnd; x++)
             {
-                var dx = x - tideGraphStart;
+                var dx = x - tideGraphStart + screenBiasX;
                 if (x == tideNowPoint) {
                     // draw a yellow line at the current time
                     dc.setColor(Graphics.COLOR_YELLOW, Graphics.COLOR_TRANSPARENT);
@@ -673,7 +706,7 @@ class TidesView extends CommonView {
                     } else {
                         dc.setColor(Graphics.COLOR_DK_BLUE, Graphics.COLOR_TRANSPARENT);
                     }
-                    dc.drawLine(0, y, screenWidth, y);
+                    dc.drawLine(screenBiasX, y, screenBiasX + screenWidth, y);
                 }
             }
 
@@ -686,14 +719,15 @@ class TidesView extends CommonView {
             info = Gregorian.utcInfo(momentEnd, Time.FORMAT_SHORT);
             var tideGraphEndTime = info.hour.format("%02u") + ":" + info.min.format("%02u");
             dc.setColor(fgcolor, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(0, graphBottom, TIDE_FONT, tideGraphStartTime, Graphics.TEXT_JUSTIFY_LEFT);
-            dc.drawText(screenWidth - 1, graphBottom, TIDE_FONT, tideGraphEndTime, Graphics.TEXT_JUSTIFY_RIGHT);
+            dc.drawText(screenBiasX, graphBottom, TIDE_FONT, tideGraphStartTime, Graphics.TEXT_JUSTIFY_LEFT);
+            dc.drawText(screenBiasX + screenWidth - 1, graphBottom, TIDE_FONT, tideGraphEndTime, Graphics.TEXT_JUSTIFY_RIGHT);
             dc.setColor(Graphics.COLOR_YELLOW, Graphics.COLOR_TRANSPARENT);
             dc.drawText(nowX, graphBottom, TIDE_FONT, "now:" + nowHeight.format("%2.1f") + "ft", Graphics.TEXT_JUSTIFY_LEFT);
 
             // the rest of the screen is used for highlights
             var y = graphBottom + fontHeight + 4;
-            for (var i = 0; i < cTidalHighlightData; i++) {
+            for (var i = 0; i < cTidalHighlightData; i++) 
+            {
                 var color = tidalHighlightData[i]["c"];
                 var x = tidalHighlightData[i]["i"];
                 var drawline = true;
@@ -704,28 +738,30 @@ class TidesView extends CommonView {
                 // d = description
                 // d  h  t
                 dc.setColor(color, Graphics.COLOR_TRANSPARENT);
-                dc.drawText(5, y, TIDE_FONT, tidalHighlightData[i]["d"], Graphics.TEXT_JUSTIFY_LEFT);
+                dc.drawText(screenBiasX + 5, y, TIDE_FONT, tidalHighlightData[i]["d"], Graphics.TEXT_JUSTIFY_LEFT);
                 dc.setColor(fgcolor, Graphics.COLOR_TRANSPARENT);
                 dc.drawText(nowX, y, TIDE_FONT, tidalHighlightData[i]["h"], Graphics.TEXT_JUSTIFY_LEFT);
                 dc.drawText(nowX * 3, y, TIDE_FONT, tidalHighlightData[i]["t"], Graphics.TEXT_JUSTIFY_RIGHT);
-                if (drawline && x >= tideGraphStart && x < tideGraphEnd) {
+                if (drawline && x >= tideGraphStart && x < tideGraphEnd) 
+                {
                     x = x - tideGraphStart;
                     dc.setColor(color, Graphics.COLOR_TRANSPARENT);
-                    dc.drawLine(x, graphTop, x, graphBottom);
+                    dc.drawLine(screenBiasX + x, graphTop, screenBiasX + x, graphBottom);
                 }
                 y += fontHeight;
             }
 
             // if there are a lot of highlights then the big clock used by
             // the clock doesn't fit, make it smaller
-            if (cTidalHighlightData > 4) {
+            if (cTidalHighlightData > 4) 
+            {
                 clockSpeedFont = TIDE_FONT;
-            } else {
+            } 
+            else 
+            {
                 clockSpeedFont = Graphics.FONT_MEDIUM;
             }
         }
-        // CommonView draws the time and boat speed
-        CommonView.onUpdate(dc);
     }
 }
 

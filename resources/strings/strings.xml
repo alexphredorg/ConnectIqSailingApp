@@ -1,0 +1,10 @@
+<strings>
+    <string id="AppName">Sailing</string>
+    <string id="AppVersion">App Version</string>
+    <string id="CalTopoId">Caltopo Map ID</string>
+    <string id="ForcePugetSound">Always show the Puget Sound Wind view?</string>
+    <string id="HideTimerView">Hide the Timer screen?</string>
+    <string id="HideMarksView">Hide the Marks screen?</string>
+    <string id="HideTidesView">Hide the Tides screen?</string>
+    <string id="HideWindsView">Hide the WInds screen? (on by default only for Puget Sound)</string>
+</strings>
