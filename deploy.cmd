@@ -1,2 +1,2 @@
 call build.cmd -sideload
-copy bin\SailingApp.prg d:\garmin\apps
+copy bin\SailingApp_vahr.prg d:\garmin\apps
