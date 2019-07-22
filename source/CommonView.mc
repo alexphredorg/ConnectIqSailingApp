@@ -8,48 +8,6 @@ using Toybox.Position as Position;
 using Toybox.Attention as Attention;
 using Toybox.Communications as Comm;
 
-const menuSymbols = [
-    :menuItem0,
-    :menuItem1,
-    :menuItem2,
-    :menuItem3,
-    :menuItem4,
-    :menuItem5,
-    :menuItem6,
-    :menuItem7,
-    :menuItem9,
-    :menuItem10,
-    :menuItem11,
-    :menuItem12,
-    :menuItem13,
-    :menuItem14,
-    :menuItem15,
-    :menuItem16,
-    :menuItem17,
-    :menuItem18,
-    :menuItem19,
-    :menuItem20,
-    :menuItem21,
-    :menuItem22,
-    :menuItem23,
-    :menuItem24,
-    :menuItem25,
-    :menuItem26,
-    :menuItem27,
-    :menuItem28,
-    :menuItem29,
-    :menuItem30,
-    :menuItem31,
-    :menuItem32,
-    :menuItem33,
-    :menuItem34,
-    :menuItem35,
-    :menuItem36,
-    :menuItem37,
-    :menuItem38,
-    :menuItem39
-    ];
-
 var speed = -1;
 var heading = -1;
 var session = null;
@@ -88,25 +46,41 @@ class CommonView extends Ui.View {
         return true;
     }
 
-    function onSwipeUp() {
+    function onSwipeUp() 
+    {
+        return onDownKey();
+    }
+
+    function onSwipeDown() 
+    {
+        return onUpKey();
+    }
+
+    function onEscKey() 
+    {
+        System.println("onEscKey");
+        return quitDialog();
+    }
+
+    function onEnterKey() 
+    {
         return true;
     }
 
-    function onSwipeDown() {
+    function onDownKey() 
+    {
         return true;
     }
 
-    function onEscKey() {
-        return onSwipeDown();
-    }
-
-    function onEnterKey() {
-        return onSwipeUp();
+    function onUpKey() 
+    {
+        return true;
     }
 
     function quitDialog() {
         var dialog = new Ui.Confirmation("Really quit?");
         Ui.pushView(dialog, new ConfirmQuitDelegate(), Ui.SLIDE_IMMEDIATE);
+        return true;
     }
 
     function errorDialog(errorText) {
@@ -114,44 +88,53 @@ class CommonView extends Ui.View {
         Ui.pushView(dialog, new Ui.ConfirmationDelegate(), Ui.SLIDE_IMMEDIATE);
     }
 
-    // called by onMenu to start a new menu
-    function resetMenu() {
-        menu = new Ui.Menu();
-        cMenuItems = 0;
-    }
-
-    // called for each menu item to be shown to the user
-    // returns the index of the item (used on the callback)
-    function addMenuItem(text) {
-        menu.addItem(text, $.menuSymbols[cMenuItems]);
-        cMenuItems++;
-        if (cMenuItems >= menuSymbols.size()) {
-            System.println("menu full!!!");
-            cMenuItems--;
-        }
-        return (cMenuItems - 1);
-    }
-
-    function maxMenuItems() 
-    {
-        return $.menuSymbols.size();
-    }
-
-    // called after all calls to addMenuItem
-    function showMenu() {
-        Ui.pushView(menu, new CommonMenuInput(self), Ui.SLIDE_UP);
-    }
-
     // called when the menu key is hit
-    function onMenu() {
-        // example for subclasses to use:
-        //resetMenu();
-        //menu.setTitle("Select Wind Station");
-        //for (var i = 0; i < windData.size(); i++) {
-        //    menu.addItem(windData[i]["station_name"], $.menuSymbols[i]);
-        //} 
-        //showMenu();
+    function onMenu() 
+    {
+        menu = new Ui.Menu2({:title => "Sailing"});
+        self.addViewMenuItems(menu);
+        $.inputDelegate.addViewMenuItems(menu);
+        menu.addItem(new Ui.MenuItem("Quit", "Quit Sailing App", :quitMenuItem, {}));
+
+        var delegate = new MyMenu2Delegate(self);
+        Ui.pushView(menu, delegate, Ui.SLIDE_UP);
+
         return true;
+    }
+
+    // subclasses can use this to add custom entries into the menu
+    function addViewMenuItems(menu)
+    {
+        System.println("addViewMenuItems default");
+        // menu.addItem(new Ui.MenuItem("Tides Page", "Show Tides Page", :tidesMenuItem, {}));
+    }
+
+    function viewMenuItemSelected(symbol, item)
+    {
+        return false;
+    }
+
+    // called when a menu item has been selected
+    function menuItemSelected(item)
+    {
+        System.println("in menu item selected");
+        System.println(item.getLabel());
+        var symbol = item.getId();
+        System.println(symbol);
+        if ($.inputDelegate.viewMenuItemSelected(symbol, item))
+        {
+            System.println("$.inputDelegate.viewMenuItemSelected returned true");
+        }
+        else if (self.viewMenuItemSelected(symbol, item))
+        {
+            System.println("self.viewMenuItemSelected returned true");
+        }
+        else if (symbol == :quitMenuItem)
+        {
+            System.println("quit menu item selected");
+            Ui.popView(Ui.SLIDE_DOWN);
+            quitDialog();
+        }
     }
 
     // called when a menu item is selected
@@ -161,9 +144,12 @@ class CommonView extends Ui.View {
         Ui.requestUpdate();
     }
 
-
     // Load your resources here
     function onLayout(dc) {
+    }
+
+    // called by SailingAppDelegate on GPS events
+    function onPositionUpdate(info) {
     }
 
     // Called when this View is brought to the foreground. Restore
@@ -443,27 +429,4 @@ class CommonView extends Ui.View {
         System.println("common: httpGetJson() done");
     }
 
-}
-
-class CommonMenuInput extends Ui.MenuInputDelegate {
-    var view;
-
-    function initialize(viewPointer) {
-        view = viewPointer;
-        MenuInputDelegate.initialize();
-    }
-
-    function onMenuItem(symbol) {
-        for (var i = 0; i < menuSymbols.size(); i++)
-        {
-            if (menuSymbols[i] == symbol) {
-                System.println("menu item selected: " + i);
-                view.menuItemSelected(i);
-            }
-        }
-    }
-    
-    function onBack() {
-        Ui.popView(Ui.SLIDE_DOWN);
-    }
 }

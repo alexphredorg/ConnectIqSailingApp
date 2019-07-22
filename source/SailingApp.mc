@@ -7,6 +7,8 @@ function onPosition(info)
     speed = info.speed;
 }
 
+var inputDelegate = null;
+
 class Sailing extends App.AppBase {
     var inputDelegate = null;
 
@@ -25,6 +27,8 @@ class Sailing extends App.AppBase {
     // Return the initial view of your application here
     function getInitialView() {
         inputDelegate = new SailingAppDelegateGeneric();
+        // set the global variable for primary delegate
+        $.inputDelegate = inputDelegate;
         return [ inputDelegate.getCurrentView(), inputDelegate ];
     }
 

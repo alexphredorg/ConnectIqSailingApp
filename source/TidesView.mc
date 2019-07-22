@@ -89,6 +89,7 @@ class TidesView extends CommonView {
     // initialize the view
     //
     function initialize() {
+        System.println("TidesView.initialize");
         highSpeedRefresh = false;
         CommonView.initialize("tides");
 
@@ -153,76 +154,56 @@ class TidesView extends CommonView {
     }
 
     //
-    // when the menu button is pressed.  We create a custom menu that lists
-    // all of the stations
+    // put the list of tide stations into the menu
     //
-    function onMenu() {
-        resetMenu();
-
-        var connected = System.getDeviceSettings().phoneConnected;
-
-        if (connected)
+    function addViewMenuItems(menu)
+    {
+        System.println("tides menu");
+        var stationList = getTideStationList();
+        if (stationList == null) 
         {
-            quitMenuItem = -1;
-            findStationsMenuItem = -1;
-
-            var stationList = getTideStationList();
-            if (stationList == null) 
-            {
-                stationList = [];
-            }
-
-            menu.setTitle("Select Tide Station");
-            for (var i = 0; i < stationList.size(); i++) {
-                addMenuItem(stationList[i]["name"]);
-            } 
-
-            if (connected && position != null)
-            {
-                findStationsMenuItem = addMenuItem("<Find Nearby Stations>");
-            }
-
-            quitMenuItem = addMenuItem("<Quit App>");
-            showMenu();
+            stationList = [];
         }
-        else
-        {
-            System.println("showing error message");
-            errorDialog("No connection: Watch must be connected to phone to get tide data");
-        }
-        return true;
+
+        for (var i = 0; i < stationList.size(); i++) {
+            menu.addItem(new Ui.MenuItem(stationList[i]["name"], "Select Tide Station", :tideStation, {}));
+        } 
+
+        menu.addItem(new Ui.MenuItem("Find", "Find Nearby Stations", :find, {}));
     }
 
+    // 
+    // handle folder menu items
     //
-    // called by TidesMenuInput when a new tide station is selected
-    // inputs:
-    //  stationIndex -- the index into stations[] for the new selected tide
-    //                  station
-    //
-    function menuItemSelected(stationIndex) {
-        var stationList = getTideStationList();
-        System.println("stationList.size = " + stationList.size());
-        System.println("stationIndex  = " + stationIndex);
-        if (stationList != null && stationIndex < stationList.size())
+    function viewMenuItemSelected(symbol, item)
+    {
+        if (symbol == :tideStation)
         {
-            // a new station has been selected, render that one
-            System.println("selecting station id: " + stationList[stationIndex]["id"]);
-            requestStationInfo(stationList[stationIndex]["id"]);
+            var stationIndex = -1;
+            var stationList = getTideStationList();
+            for (var i = 0; i < stationList.size(); i++)
+            {
+                System.println(item.getLabel() + " compare " + stationList[i]["name"]);
+                if (stationList[i]["name"] == item.getLabel())
+                {
+                    stationIndex = i;
+                }
+            }
+            if (stationIndex >= 0)
+            {
+                System.println("selecting station id: " + stationList[stationIndex]["id"]);
+                requestStationInfo(stationList[stationIndex]["id"]);
+                Ui.popView(Ui.SLIDE_DOWN);
+                return true;
+            }
         }
-        else if (stationIndex == findStationsMenuItem)
+        else if (symbol == :find)
         {
             // get a new list of stations
             requestStationList();
+            Ui.popView(Ui.SLIDE_DOWN);
         }
-        else if (stationIndex == quitMenuItem)
-        {
-            quitDialog();
-        }
-    }
-
-    function onEscKey()
-    {
-        self.quitDialog();
+        return false;
     }
 
     //
@@ -444,7 +425,8 @@ class TidesView extends CommonView {
     //
     // called when the position is updated by GPS. 
     // 
-    function onPositionUpdate(info) {
+    function onPositionUpdate(info) 
+    {
         if (info.position == null)
         {
             self.position = null;

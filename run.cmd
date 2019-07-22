@@ -1,6 +1,6 @@
 @echo off
-set device=vivoactive_hr
-set binary=vahr
+set device=vivoactive3
+set binary=va3
 if not "%1"=="" set device=%1
 if not "%1"=="" set binary=%1
 echo using device %device%

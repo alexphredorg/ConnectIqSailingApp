@@ -12,8 +12,7 @@ using Toybox.Math as Math;
 
 
 //
-// WindsView displays Puget Sound wind information that is downloaded from
-// Bob Hall's awesome obs website: http://b.obhall.com/obs
+// MarksView shows information about course marks loaded from CalTopo
 //
 class MarksView extends CommonView {
     var folderNames = null; 
@@ -30,7 +29,6 @@ class MarksView extends CommonView {
     var desiredPosition = [ 0, 0 ];
     var markName = "";
     var markShortname = "";
-    var menuLevel = 0;
     var reloadFromWeb = false;
     var refreshCount = 1;
     var shrunk = false;
@@ -152,7 +150,6 @@ class MarksView extends CommonView {
     }
 
     function recoverFromReduceMemory() {
-        System.println("marks: recoverFromReduceMemory");
         if (shrunk) {
             loadMarks();
         }
@@ -399,121 +396,65 @@ class MarksView extends CommonView {
     }
 
     //
-    // called when the menu key is hit.  Our menu lists all of the wind
-    // stations and lets a user pick one.
+    // insert the list of folders into the menu
     //
-    function onMenu() {
-        resetMenu();
-        recoverFromReduceMemory();
-        var maxMenuItems = maxMenuItems();
-
-
-        if (menuLevel == 0)
+    function addViewMenuItems(menu)
+    {
+        System.println("adding view menu items for marks");
+        for (var i = 0; i < marks.size(); i++)
         {
-            for (var i = 0; i < marks.size(); i++)
-            {
-                System.println("marks[i].size = " + marks[i].size());
-                System.println("maxMenuItems = " + maxMenuItems);
-                if (marks[i].size() > maxMenuItems)
-                {
-                    if (loadError == null) 
-                    {
-                        loadError = "Folder has over 40 items: " + folderNames[i];
-                        loadErrorCode = null;
-                    }
-                }
-            }
+            menu.addItem(new Ui.MenuItem(folderNames[i], "Folder " + folderNames[i], :folder, {}));
+        }
 
-            // pick a folder out of the list.  
-            menu.setTitle("Folders:");
-            for (var i = 0; i < marks.size(); i++) 
-            {
-                addMenuItem(folderNames[i]);
-            } 
-            addMenuItem("<Load Marks>");
-            addMenuItem("<Quit App>");
-            var app = App.getApp();
-            var calTopoId = app.getProperty("calTopoId");
-            addMenuItem("Caltopo ID: " + calTopoId);
-            if (loadError != null) 
-            {
-                addMenuItem("er: " + loadError);
-            }
-            if (loadErrorCode != null) 
-            {
-                addMenuItem("code: " + loadErrorCode);
-            }
-        }
-        else if (menuLevel == 1)
-        {
-            // pick a mark out of this folder
-            menu.setTitle(folderNames[selectedFolder] + " Marks:");
-            addMenuItem("<change folder>");
-            for (var i = 0; i < folderMarks.size(); i++) 
-            {
-                addMenuItem(folderMarks[i]["n"]);
-            } 
-        }
-        showMenu();
-        return true;
+        menu.addItem(new Ui.MenuItem("Load", "Load Marks from CalTopo", :loadMarks, {}));
     }
 
-    //
-    // called when a menu item is selected
     // 
-    // index -- the menu item selected
+    // handle folder menu items
     //
-    function menuItemSelected(index) {
-        if (menuLevel == 0)
+    function viewMenuItemSelected(symbol, item)
+    {
+        if (symbol == :folder)
         {
-            if (index >= marks.size())
+            var index = -1;
+            for (var i = 0; i < marks.size(); i++)
             {
-                switch (index)
+                System.println(item.getLabel() + " compare " + folderNames[i]);
+                if (folderNames[i] == item.getLabel())
                 {
-                    case marks.size():
-                        // <load marks>
-                        reloadFromWeb = true;
-                        requestMarkDataFromCaltopo();        
-                        break;
-                    case marks.size() + 1:
-                        // <quit>
-                        quitDialog();
-                        break;
-                    default:
-                        reduceMemory();
-                        break;
+                    index = i;
                 }
             }
-            else
+            if (index >= 0)
             {
-                menuLevel = 1;
                 selectedFolder = index;
                 folderMarks = marks[selectedFolder];
+                if (folderMarks.size() > 0)
+                {
+                    selectedMark = 0;
+                    newMarkSelected();
+                }
+                else
+                {
+                    defaultMarks();
+                }
                 Ui.popView(Ui.SLIDE_DOWN);
-                onMenu();
+                return true;
             }
         }
-        else 
+        else if (symbol == :loadMarks)
         {
-            if (index == 0)
-            {
-                menuLevel = 0;
-                Ui.popView(Ui.SLIDE_DOWN);
-                onMenu();
-            }
-            else 
-            {
-                selectedMark = index - 1;
-                newMarkSelected();
-            }
+            reloadFromWeb = true;
+            requestMarkDataFromCaltopo();        
+            Ui.popView(Ui.SLIDE_DOWN);
         }
+        return false;
     }
 
     //
     // cycle through the wind stations by swiping
     //
-    function onSwipeUp() {
-        //reduceMemory();
+    function onUpKey() {
         recoverFromReduceMemory();
         if (folderMarks != null)
         {
@@ -522,13 +463,13 @@ class MarksView extends CommonView {
                 newMarkSelected();
             }
         }
+        return true;
     }
 
     //
     // used to cycle through wind stations
     //
-    function onSwipeDown() {
-        //reduceMemory();
+    function onDownKey() {
         recoverFromReduceMemory();
         if (folderMarks != null)
         {
@@ -538,6 +479,7 @@ class MarksView extends CommonView {
                 newMarkSelected();
             }
         }
+        return true;
     }
 
     // Load your resources here

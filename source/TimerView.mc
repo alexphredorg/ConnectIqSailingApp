@@ -39,8 +39,6 @@ class TimerView extends CommonView {
     var timerZero;
     // how long should the timer be set to when the timer is reset?
     var timerDuration = 300;
-    // do we have menu buttons on the screen?
-    var inputMode = 0;
     // one quarter of the screen in pixels 
     var quarterWidth;
     // the font that we use when drawing buttons
@@ -76,58 +74,6 @@ class TimerView extends CommonView {
     }
 
     //
-    // Esc key is used to exit the app from the timer screen
-    //
-    function onEscKey()
-    {
-    }
-
-    //
-    // called when the user clicks on the screen.  We use this for the 
-    // on screen buttons.
-    //
-    // inputs:
-    //   evt -- tap event which tells us where the user tapped the screen
-    //
-    function screenTap(evt) {
-        if (evt.getType() == Ui.CLICK_TYPE_TAP && inputMode > 0) {
-            var coords = evt.getCoordinates();
-            System.println("tap at " + coords[0] + "," + coords[1]);
-            var buttonCallback = null;
-            if (coords[1] < self.buttonHeightTop)
-            {
-                if (coords[0] < quarterWidth * 2)
-                {
-                    buttonCallback = topLeftButtonCallback;
-                } 
-                else 
-                {
-                    buttonCallback = topRightButtonCallback;
-                }
-            } 
-            else if (coords[1] > screenHeight - self.buttonHeightBottom) 
-            {
-                if (coords[0] < quarterWidth * 3) 
-                {
-                    buttonCallback = bottomLeftButtonCallback;
-                }
-                else 
-                {
-                    buttonCallback = bottomRightButtonCallback;
-                }
-            }
-            hideMenu();
-            if (buttonCallback != null) 
-            {
-                buttonCallback.invoke();
-            }
-            Ui.requestUpdate();
-        } 
-
-        return true;
-    }
-
-    //
     // Start the timer (occurs on enter button press).  This also 
     // starts recording a session (as soon as we have GPS).
     //
@@ -136,7 +82,6 @@ class TimerView extends CommonView {
         // starting a fresh timer
         timerZero = Time.now();
         timerZero = timerZero.add(new Time.Duration(timerDuration));
-        hideMenu();
         changeMode(mode_insequence);
     }
 
@@ -152,7 +97,9 @@ class TimerView extends CommonView {
     // called when we need to sync to the nearest minute
     // this modifies timerZero
     //
-    function sync()
+    // syncUp -- true to go up a minute, false to go down a minute
+    //
+    function sync(syncUp)
     {
         var now = Time.now();
         var duration = now.subtract(timerZero);
@@ -160,7 +107,7 @@ class TimerView extends CommonView {
         var minutes = seconds / 60;
         seconds = seconds % 60;
         timerZero = now;
-        if (seconds > 30) {
+        if (syncUp) {
             timerZero = timerZero.add(new Time.Duration((minutes + 1) * 60));
         } else {
             timerZero = timerZero.add(new Time.Duration((minutes) * 60));
@@ -171,45 +118,15 @@ class TimerView extends CommonView {
     // reset the timer.  This also stops recording a session.
     //
     function promptReset() { 
-        hideMenu();
-
         var dialog = new Ui.Confirmation("Confirm reset?");
         Ui.pushView(dialog, new ConfirmResetDelegate(), Ui.SLIDE_IMMEDIATE);
     }
 
     function reset()
     {
+        clearFinish();
         timerZero = null;
-        hideMenu();
         changeMode(mode_prep);
-    }
-
-    //
-    // Show the quit dialog
-    //
-    function quit()
-    {
-        self.quitDialog();
-    }
-
-    //
-    // Callback for the minus one minute button
-    //
-    function minusOneMinute()
-    {
-        if (timerDuration > 0) {
-            timerDuration = timerDuration - 60;
-        }
-        onMenu();
-    }
-
-    //
-    // Callback for the plus one minute button
-    //
-    function plusOneMinute()
-    {
-        timerDuration = timerDuration + 60;
-        onMenu();
     }
 
     //
@@ -253,28 +170,95 @@ class TimerView extends CommonView {
         Ui.requestUpdate();
     }
 
-    //
-    // put up the touch control menu
-    //
-    function onMenu() {
-        if (inputMode == 0)
-        {
-            System.println("in input mode");
+    function onDownKey() 
+    {
+        switch (mode) {
+            case mode_prep:
+                timerDuration = timerDuration - 60;
+                if (timerDuration < 0)
+                {
+                    timerDuration = 0;
+                }
+                break;
+            case mode_insequence:
+                sync(false);
+                break;
+            case mode_sailing:
+                break;
+            case mode_finish:
+                break;
+            default:
+                break;
         }
-        inputMode = 100;
         return true;
     }
 
-    //
-    // remove the menu from the screen
-    //
-    function hideMenu() {
-        topLeftButtonCallback = null;
-        topRightButtonCallback = null;
-        bottomLeftButtonCallback = null;
-        bottomRightButtonCallback = null;
-        inputMode = 0;
-        System.println("left input mode");
+    function onUpKey()
+    {
+        switch (mode) {
+            case mode_prep:
+                timerDuration = timerDuration + 60;
+                break;
+            case mode_insequence:
+                sync(true);
+                break;
+            case mode_sailing:
+                break;
+            case mode_finish:
+                break;
+            default:
+                break;
+        }
+        return true;
+    }
+
+    function addViewMenuItems(menu)
+    {
+        System.println("adding view menu items for timer");
+        switch (mode)
+        {
+            case mode_prep:
+                menu.addItem(new Ui.MenuItem("Just Sail", "Start Session Now!", :justSail, {}));
+                break;
+            case mode_insequence:
+                menu.addItem(new Ui.MenuItem("Reset", "Reset Timer", :resetTimer, {}));
+                break;
+            case mode_sailing:
+                menu.addItem(new Ui.MenuItem("Reset", "Reset Timer", :resetTimer, {}));
+                break;
+            case mode_finish:
+                menu.addItem(new Ui.MenuItem("Reset", "Reset Timer", :resetTimer, {}));
+                menu.addItem(new Ui.MenuItem("Clear Finish", "Clear Finish Times", :clearFinish, {}));
+                break;
+            default:
+                break;
+        }
+    }
+
+    function viewMenuItemSelected(symbol, item)
+    {
+        var reset = false;
+        switch (symbol)
+        {
+            case :justSail:
+                justSail();
+                break;
+            case :resetTimer:
+                reset = true;
+                break;
+            case :clearFinish:
+                clearFinish();
+                break;
+            default:
+                return false;
+                break;
+        }
+        Ui.popView(Ui.SLIDE_DOWN);
+        if (reset)
+        {
+            promptReset();
+        }
+        return true;
     }
 
     //
@@ -287,7 +271,7 @@ class TimerView extends CommonView {
         {
             startTimer();
         } 
-        else
+        else if (mode == mode_sailing)
         {
             finishTimer();
         }
@@ -298,7 +282,7 @@ class TimerView extends CommonView {
     {
         if (finishTimes == null)
         {
-            finishTimes = new[5];
+            finishTimes = new[4];
             finishTimes[0] = Time.now();
         }
         else
@@ -392,8 +376,6 @@ class TimerView extends CommonView {
                 bottomLeft = "Just Sail";
                 bottomLeftBgColor = Graphics.COLOR_GREEN;
                 bottomLeftFgColor = Graphics.COLOR_WHITE;
-                topLeftButtonCallback = method(:minusOneMinute);
-                topRightButtonCallback = method(:plusOneMinute);
                 bottomLeftButtonCallback = method(:justSail);
                 break;
             case mode_insequence:
@@ -564,6 +546,9 @@ class TimerView extends CommonView {
             for (var i = 0; i < finishTimes.size(); i++)
             {
                 // empty values if there is no finish in this slot
+                //System.println("i = " + i);
+                //System.println("finishTimes[i] = " + finishTimes[i]);
+                //System.println("timerZero = " + timerZero);
                 if (finishTimes[i] == null) { 
                     continue;
                 }
@@ -618,24 +603,16 @@ class TimerView extends CommonView {
         // this will show our layout
         CommonView.onUpdate(dc);
 
-        // overlay the menu if we're in touch input mode
-        if (inputMode > 0)
-        {
-            drawMenu(dc, fgcolor, bgcolor);
-        } 
-        else 
-        {
-            // draw a G in the upper left showing GPS status
-            dc.setColor(GpsAccuracyColor($.gpsAccuracy), Graphics.COLOR_TRANSPARENT);
-            dc.drawText(0, 0, Graphics.FONT_XTINY, "G", Graphics.TEXT_JUSTIFY_LEFT);
+        // draw a G in the upper left showing GPS status
+        // BUGBUG - move into layout
+        dc.setColor(GpsAccuracyColor($.gpsAccuracy), Graphics.COLOR_TRANSPARENT);
+        dc.drawText(32, 25, Graphics.FONT_XTINY, "G", Graphics.TEXT_JUSTIFY_LEFT);
 
-            if ($.session != null && $.session.isRecording())
-            {
-                dc.setColor(Graphics.COLOR_RED, Graphics.COLOR_TRANSPARENT);
-                dc.fillCircle(screenWidth - 7, 8, 6);
-            }
+        if ($.session != null && $.session.isRecording())
+        {
+            dc.setColor(Graphics.COLOR_RED, Graphics.COLOR_TRANSPARENT);
+            dc.fillCircle(screenWidth - 40, 39, 4);
         }
-
     }
 
     //

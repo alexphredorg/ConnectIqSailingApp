@@ -13,9 +13,7 @@ using Toybox.Communications as Comm;
 // Bob Hall's awesome obs website: http://b.obhall.com/obs
 //
 class WindsView extends CommonView {
-    // this is all hardcoded to the vivoactive HR screen
-    const SPEED_FONT = Graphics.FONT_NUMBER_HOT;
-    const SPEED_FONT_ROUND = Graphics.FONT_NUMBER_MEDIUM;
+    const SPEED_FONT = Graphics.FONT_NUMBER_MILD;
     const TITLE_FONT = Graphics.FONT_XTINY;
     const DIR_FONT = Graphics.FONT_MEDIUM;
     const WINDTIME_FONT = Graphics.FONT_XTINY;
@@ -48,14 +46,11 @@ class WindsView extends CommonView {
         lastDataRefresh = Time.today();
         highSpeedRefresh = false;
 
-        // hack to fit larger screens as if they were vivoactive hr
-        if (screenWidth > MAX_SCREEN_WIDTH) 
-        {
-            screenBiasX = (screenWidth - MAX_SCREEN_WIDTH) / 2;
-            screenWidth = MAX_SCREEN_WIDTH;
-            screenBiasY = ((screenHeight - MIN_SCREEN_HEIGHT) / 2) + 20;
-            speedFont = SPEED_FONT_ROUND;
-        }
+        // this whole view was written for the VA HR screen and these are hacks to make
+        // it work on newer round watches
+        screenBiasX = (screenWidth - MAX_SCREEN_WIDTH) / 2;
+        screenWidth = MAX_SCREEN_WIDTH;
+        screenBiasY = ((screenHeight - MIN_SCREEN_HEIGHT) / 2) + 20;
 
         // override the clock font
         clockSpeedFont = WINDTIME_FONT;
@@ -71,33 +66,31 @@ class WindsView extends CommonView {
     }
 
     //
-    // called when the menu key is hit.  Our menu lists all of the wind
-    // stations and lets a user pick one.
+    // add a reload option to the menu
     //
-    function onMenu() {
-        resetMenu();
-        menu.setTitle("Select Wind Station");
-        for (var i = 0; i < windData.size(); i++) {
-            addMenuItem(windData[i]["station_name"]);
-        } 
-        showMenu();
-        return true;
+    function addViewMenuItems(menu)
+    {
+        menu.addItem(new Ui.MenuItem("Reload", "Reload Wind Data", :reload, {}));
     }
 
-    //
-    // called when a menu item is selected
     // 
-    // index -- the selected wind station
+    // handle menu items
     //
-    function menuItemSelected(index) {
-        iWindData = index;
-        Ui.requestUpdate();
+    function viewMenuItemSelected(symbol, item)
+    {
+        if (symbol == :reload)
+        {
+            requestWindData();
+            Ui.popView(Ui.SLIDE_DOWN);
+            return true;
+        }
+        return false;
     }
 
     //
     // cycle through the wind stations by swiping
     //
-    function onSwipeUp() {
+    function onDownKey() {
         if ((windData != null) && (windData.size() > 0)) {
             iWindData = (iWindData + 1) % windData.size();
             Ui.requestUpdate();
@@ -107,7 +100,7 @@ class WindsView extends CommonView {
     //
     // used to cycle through wind stations
     //
-    function onSwipeDown() {
+    function onUpKey() {
         if ((windData != null) && (windData.size() > 0)) {
             iWindData--;
             if (iWindData < 0) { iWindData = windData.size() - 1; }
@@ -226,18 +219,20 @@ class WindsView extends CommonView {
 
                 // station ID on top
                 drawText(dc, center, y, TITLE_FONT, stationName, Graphics.TEXT_JUSTIFY_CENTER);
-                y += dc.getFontHeight(TITLE_FONT) - 7;
+                y += dc.getFontHeight(TITLE_FONT) - 2;
 
                 // show speed, dir, time left to right
-                drawText(dc, 85, y, speedFont, speed, Graphics.TEXT_JUSTIFY_RIGHT);
+                drawText(dc, 45, y, speedFont, speed, Graphics.TEXT_JUSTIFY_RIGHT);
 
                 // time
-                drawText(dc, 90, y + 4, WINDTIME_FONT, windtime, Graphics.TEXT_JUSTIFY_LEFT);
+                drawText(dc, 95, y + 4, WINDTIME_FONT, windtime, Graphics.TEXT_JUSTIFY_LEFT);
 
                 y += dc.getFontHeight(speedFont);
 
                 // direction
-                drawText(dc, 90, y - dc.getFontHeight(DIR_FONT) - 4, DIR_FONT, dir, Graphics.TEXT_JUSTIFY_LEFT);
+                drawText(dc, 48, y - dc.getFontHeight(DIR_FONT) + 3, DIR_FONT, dir, Graphics.TEXT_JUSTIFY_LEFT);
+                
+                y += 5;
 
                 if (i == iWindData) { cellHeight = y; }
             }

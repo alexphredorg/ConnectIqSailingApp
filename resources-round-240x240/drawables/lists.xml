@@ -1,6 +1,6 @@
 <resources>
     <drawable-list id="timergrid" foreground="Graphics.COLOR_WHITE">
-        <shape type="rectangle" x="0" y="21" width="239" height="1" color="Graphics.COLOR_WHITE" />
+        <shape type="rectangle" x="0" y="23" width="239" height="1" color="Graphics.COLOR_WHITE" />
         <shape type="rectangle" x="0" y="55" width="239" height="1" color="Graphics.COLOR_WHITE" />
         <shape type="rectangle" x="0" y="140" width="239" height="1" color="Graphics.COLOR_WHITE" />
         <shape type="rectangle" x="0" y="215" width="239" height="1" color="Graphics.COLOR_WHITE" />
@@ -16,8 +16,8 @@
         <shape type="rectangle" x="0" y="214" width="239" height="1" color="Graphics.COLOR_WHITE" />
     </drawable-list>
     <drawable-list id="marksgrid" foreground="Graphics.COLOR_WHITE">
-        <shape type="rectangle" x="0" y="40" width="239" height="1" color="Graphics.COLOR_WHITE" />
-        <shape type="rectangle" x="0" y="116" width="239" height="1" color="Graphics.COLOR_WHITE" />
-        <shape type="rectangle" x="0" y="200" width="239" height="1" color="Graphics.COLOR_WHITE" />
+        <shape type="rectangle" x="0" y="45" width="239" height="1" color="Graphics.COLOR_WHITE" />
+        <shape type="rectangle" x="0" y="118" width="239" height="1" color="Graphics.COLOR_WHITE" />
+        <shape type="rectangle" x="0" y="197" width="239" height="1" color="Graphics.COLOR_WHITE" />
     </drawable-list>
 </resources>
