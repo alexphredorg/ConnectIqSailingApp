@@ -108,11 +108,9 @@ class SailingAppDelegateGeneric extends Ui.BehaviorDelegate {
         
         // transfer from the dict to an array
         views = new [viewCount];
-        System.println("viewCount = " + viewCount);
         for (var i = 0; i < viewCount; i++)
         {
             views[i] = viewsTempDict[i];
-            System.println("views[i] = " + views[i]);
         }
         viewsTempDict = {};
 

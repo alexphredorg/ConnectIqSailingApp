@@ -77,9 +77,10 @@ class TimerView extends CommonView {
     // Start the timer (occurs on enter button press).  This also 
     // starts recording a session (as soon as we have GPS).
     //
-    function startTimer() {
+    // timerDuration -- How long to count down for
+    //
+    function startTimer(timerDuration) {
         System.println("starting new timer");
-        // starting a fresh timer
         timerZero = Time.now();
         timerZero = timerZero.add(new Time.Duration(timerDuration));
         changeMode(mode_insequence);
@@ -115,13 +116,16 @@ class TimerView extends CommonView {
     }
 
     //
-    // reset the timer.  This also stops recording a session.
+    // Ask if the user wants to reset, do the reset if they confirm
     //
     function promptReset() { 
         var dialog = new Ui.Confirmation("Confirm reset?");
         Ui.pushView(dialog, new ConfirmResetDelegate(), Ui.SLIDE_IMMEDIATE);
     }
 
+    //
+    // reset the timer.  This also stops recording a session.
+    //
     function reset()
     {
         clearFinish();
@@ -146,7 +150,7 @@ class TimerView extends CommonView {
     function justSail()
     {
         timerDuration = 0;
-        startTimer();
+        startTimer(0);
         changeMode(mode_sailing);
     }
 
@@ -170,6 +174,9 @@ class TimerView extends CommonView {
         Ui.requestUpdate();
     }
 
+    //
+    // Handle down button presses.  Functionality varies depending on mode
+    //
     function onDownKey() 
     {
         switch (mode) {
@@ -193,6 +200,9 @@ class TimerView extends CommonView {
         return true;
     }
 
+    //
+    // Handle up button presses.  Functionality varies depending on mode
+    //
     function onUpKey()
     {
         switch (mode) {
@@ -212,6 +222,9 @@ class TimerView extends CommonView {
         return true;
     }
 
+    //
+    // Insert mode-specific menu items when the menu button is pressed
+    //
     function addViewMenuItems(menu)
     {
         System.println("adding view menu items for timer");
@@ -235,6 +248,9 @@ class TimerView extends CommonView {
         }
     }
 
+    //
+    // Handle mode-specific menu items
+    //
     function viewMenuItemSelected(symbol, item)
     {
         var reset = false;
@@ -269,7 +285,7 @@ class TimerView extends CommonView {
     function onEnterKey() {
         if (timerZero == null) 
         {
-            startTimer();
+            startTimer(self.timerDuration);
         } 
         else if (mode == mode_sailing)
         {
@@ -278,6 +294,9 @@ class TimerView extends CommonView {
         return true;
     }
 
+    // 
+    // Finish button was pressed, record the time and update the list
+    //
     function finishTimer()
     {
         if (finishTimes == null)
@@ -349,87 +368,6 @@ class TimerView extends CommonView {
 
         quarterWidth = dc.getWidth() / 4;
 
-    }
-
-    // 
-    // Draw the menu buttons
-    //
-    function drawMenu(dc, fgcolor, bgcolor)
-    {
-        var topLeft = "reset";
-        var topRight = null;
-        var bottomLeft = null;
-        var bottomRight = "Quit";
-        var bottomLeftBgColor = Graphics.COLOR_WHITE;
-        var bottomLeftFgColor = Graphics.COLOR_BLACK;
-
-        topLeftButtonCallback = method(:promptReset);
-        topRightButtonCallback = null;
-        bottomLeftButtonCallback = null;
-        bottomRightButtonCallback = method(:quit);
-
-        switch (mode)
-        {
-            case mode_prep:
-                topLeft = "-1:00";
-                topRight = "+1:00";
-                bottomLeft = "Just Sail";
-                bottomLeftBgColor = Graphics.COLOR_GREEN;
-                bottomLeftFgColor = Graphics.COLOR_WHITE;
-                bottomLeftButtonCallback = method(:justSail);
-                break;
-            case mode_insequence:
-                topRight = "sync";
-                topRightButtonCallback = method(:sync);
-                break;
-            case mode_sailing:
-                break;
-            case mode_finish:
-                bottomLeft = "Clear Finish";
-                bottomLeftButtonCallback = method(:clearFinish);
-                break;
-            default:
-                break;
-        }
-
-        var biasTop = 7;
-        var biasBottom = 7;
-        var settings = System.getDeviceSettings();
-        if (settings.screenShape == System.SCREEN_SHAPE_ROUND)
-        {
-            biasTop = 30;
-            biasBottom = 0;
-        }
-
-        // top left button
-        dc.setColor(fgcolor, fgcolor);
-        dc.fillRoundedRectangle(2, 2, (quarterWidth * 2) - 2, self.buttonHeightTop - 2, 2);
-        dc.setColor(bgcolor, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(quarterWidth * 1, biasTop, Graphics.FONT_SMALL, topLeft, Graphics.TEXT_JUSTIFY_CENTER);
-
-        // top right button
-        if (topRight)
-        {
-            dc.setColor(fgcolor, fgcolor);
-            dc.fillRoundedRectangle((quarterWidth * 2) + 2, 2, (quarterWidth * 2) - 2, self.buttonHeightTop - 2, 2);
-            dc.setColor(bgcolor, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(quarterWidth * 3, biasTop, Graphics.FONT_SMALL, topRight, Graphics.TEXT_JUSTIFY_CENTER);
-        }
-
-        // bottom left button
-        if (bottomLeft)
-        {
-            dc.setColor(bottomLeftBgColor, Graphics.COLOR_TRANSPARENT);
-            dc.fillRoundedRectangle(2, screenHeight - self.buttonHeightBottom, (quarterWidth * 3) - 2, screenHeight - 2, 2);
-            dc.setColor(bottomLeftFgColor, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(quarterWidth * 1.5, screenHeight - buttonHeightBottom + biasBottom, Graphics.FONT_SMALL, bottomLeft, Graphics.TEXT_JUSTIFY_CENTER);
-        }
-
-        // bottom right button
-        dc.setColor(Graphics.COLOR_RED, Graphics.COLOR_TRANSPARENT);
-        dc.fillRoundedRectangle((quarterWidth * 3) + 2, screenHeight - self.buttonHeightBottom, (quarterWidth * 4) - 2, screenHeight - 2, 2);
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(quarterWidth * 3.5, screenHeight - buttonHeightBottom + biasBottom, Graphics.FONT_SMALL, bottomRight, Graphics.TEXT_JUSTIFY_CENTER);
     }
 
     //

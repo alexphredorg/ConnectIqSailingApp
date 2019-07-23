@@ -11,7 +11,7 @@ using Toybox.Application as App;
 
 class TidesView extends CommonView {
     // This set of constants is used to control how tides are rendered.
-    const TIDE_FONT = Graphics.FONT_XTINY;
+    const TIDE_FONT = Graphics.FONT_SYSTEM_XTINY;
     const TIDE_POINTS_PER_BATCH = 40;
     const TIDE_POINT_PERIOD = 360;      
     const TIDE_BATCHES = 6;
@@ -21,7 +21,7 @@ class TidesView extends CommonView {
     const TIDE_NOW_POINT = ((TIDE_BATCH_SECONDS / TIDE_POINT_PERIOD) * TIDE_BACK_BATCHES) + 1;
     const TIDE_HIGHLIGHT_ROWS = 9;
     const TIDE_GRAPH_START = TIDE_POINTS_PER_BATCH * 1;
-    const MAX_SCREEN_WIDTH = 180;
+    const MAX_SCREEN_WIDTH = 190;
     const MIN_SCREEN_HEIGHT = 205;
 
     // vertical screen area for tide chart
@@ -61,6 +61,8 @@ class TidesView extends CommonView {
     var maxTidalHeight = -9999;
     var lastPredictionTime = null;
     var lastPredictionHeight = null;
+    var lastPredictionTime2 = null;
+    var lastPredictionHeight2 = null;
     var lastPredictionSlope = 0;
 
     // graph window
@@ -99,6 +101,7 @@ class TidesView extends CommonView {
             screenBiasX = (screenWidth - MAX_SCREEN_WIDTH) / 2;
             screenWidth = MAX_SCREEN_WIDTH;
             screenBiasY = (screenHeight - MIN_SCREEN_HEIGHT) / 2;
+            screenBiasY += 2;
         }
 
         timer = new Timer.Timer();
@@ -250,7 +253,8 @@ class TidesView extends CommonView {
             var nowInfo = Gregorian.info(now, Time.FORMAT_SHORT);
             year = nowInfo.year;
 
-            currHours = (start.value() - startOfYear.value()) / 3600;
+            var mytime = System.getClockTime();
+            currHours = (start.value() - startOfYear.value()).toDouble() / 3600;
             currHours = currHours.toDouble();
             currMinutes = nowInfo.hour * 60 + nowInfo.min;
             currMinutes -= (TIDE_BATCH_SECONDS * TIDE_BACK_BATCHES / 60);
@@ -290,6 +294,7 @@ class TidesView extends CommonView {
 
             // compute the height for this time
             var height = computeTideHeight(tideStation, year, currHours);
+            //System.println("currHours = " + currHours + ", currMinutes = " + currMinutes + ", height = " + height);
 
             // save the results
             tidalData[iTidalData] = height.toFloat();
@@ -312,6 +317,8 @@ class TidesView extends CommonView {
         maxTidalHeight = -9999;
         lastPredictionTime = null;
         lastPredictionHeight = null;
+        lastPredictionTime2 = null;
+        lastPredictionHeight2 = null;
         cTidalHighlightData = 0;
         tideGraphStart = TIDE_GRAPH_START;
         tideGraphStart = tideGraphStart.toNumber();
@@ -334,6 +341,8 @@ class TidesView extends CommonView {
             var highlight = null;
 
             tidalTime[i] = height;
+
+            //System.println(time + " -> " + height);
 
             if (height < minTidalHeight) { minTidalHeight = height; }
             if (height > maxTidalHeight) { maxTidalHeight = height; }
@@ -378,6 +387,8 @@ class TidesView extends CommonView {
                 }
             }
     
+            //lastPredictionTime = lastPredictionTime2;
+            //lastPredictionHeight = lastPredictionHeight2;
             lastPredictionTime = time;
             lastPredictionHeight = height;
         }
@@ -637,7 +648,7 @@ class TidesView extends CommonView {
             //
             // draw our tides screen
             //
-            var fontHeight = dc.getFontHeight(TIDE_FONT);
+            var fontHeight = dc.getFontHeight(TIDE_FONT) - 4;
 
             // top of the screen has the name of the tide station
             dc.setColor(fgcolor, Graphics.COLOR_TRANSPARENT);
@@ -665,7 +676,7 @@ class TidesView extends CommonView {
                     dc.setColor(Graphics.COLOR_YELLOW, Graphics.COLOR_TRANSPARENT);
                     dc.drawLine(dx, graphTop - 1, dx, graphBottom + 1);
                     nowHeight = tidalData[x];
-                    nowX = dx;
+                    nowX = dx + 20;
                 } else {
                     // this is a normal column, white on top, black dot, blue
                     // at the bottom
@@ -700,14 +711,15 @@ class TidesView extends CommonView {
             var momentEnd = momentStart.add(new Time.Duration(6 * 60 * screenWidth));
             info = Gregorian.utcInfo(momentEnd, Time.FORMAT_SHORT);
             var tideGraphEndTime = info.hour.format("%02u") + ":" + info.min.format("%02u");
+            graphBottom -= 2; // BUGBUG -- hack to tighten things up
             dc.setColor(fgcolor, Graphics.COLOR_TRANSPARENT);
             dc.drawText(screenBiasX, graphBottom, TIDE_FONT, tideGraphStartTime, Graphics.TEXT_JUSTIFY_LEFT);
             dc.drawText(screenBiasX + screenWidth - 1, graphBottom, TIDE_FONT, tideGraphEndTime, Graphics.TEXT_JUSTIFY_RIGHT);
             dc.setColor(Graphics.COLOR_YELLOW, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(nowX, graphBottom, TIDE_FONT, "now:" + nowHeight.format("%2.1f") + "ft", Graphics.TEXT_JUSTIFY_LEFT);
+            dc.drawText(nowX, graphBottom, TIDE_FONT, "now:" + nowHeight.format("%2.1f"), Graphics.TEXT_JUSTIFY_LEFT);
 
             // the rest of the screen is used for highlights
-            var y = graphBottom + fontHeight + 4;
+            var y = graphBottom + fontHeight + 3;
             for (var i = 0; i < cTidalHighlightData; i++) 
             {
                 var color = tidalHighlightData[i]["c"];
@@ -723,7 +735,7 @@ class TidesView extends CommonView {
                 dc.drawText(screenBiasX + 5, y, TIDE_FONT, tidalHighlightData[i]["d"], Graphics.TEXT_JUSTIFY_LEFT);
                 dc.setColor(fgcolor, Graphics.COLOR_TRANSPARENT);
                 dc.drawText(nowX, y, TIDE_FONT, tidalHighlightData[i]["h"], Graphics.TEXT_JUSTIFY_LEFT);
-                dc.drawText(nowX * 3, y, TIDE_FONT, tidalHighlightData[i]["t"], Graphics.TEXT_JUSTIFY_RIGHT);
+                dc.drawText(screenBiasX + screenWidth - 1, y, TIDE_FONT, tidalHighlightData[i]["t"], Graphics.TEXT_JUSTIFY_RIGHT);
                 if (drawline && x >= tideGraphStart && x < tideGraphEnd) 
                 {
                     x = x - tideGraphStart;
