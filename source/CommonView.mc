@@ -233,6 +233,15 @@ class CommonView extends Ui.View {
         }
     }
 
+    function setTextOnField(fieldName, text)
+    {
+        var viewObject = Ui.View.findDrawableById(fieldName);
+        if (viewObject != null) 
+        {
+            viewObject.setText(text);
+        }
+    }
+
     function refreshView() {
         Ui.requestUpdate();
     }

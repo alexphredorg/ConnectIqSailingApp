@@ -43,14 +43,6 @@ class TimerView extends CommonView {
     var quarterWidth;
     // the font that we use when drawing buttons
 
-    // button delegates
-    var buttonHeightTop = 35;
-    var buttonHeightBottom = 35;
-    var topLeftButtonCallback = null;
-    var topRightButtonCallback = null;
-    var bottomLeftButtonCallback = null;
-    var bottomRightButtonCallback = null;
-
     var finishTimes = null;
     var raceTime = null;
 
@@ -58,18 +50,16 @@ class TimerView extends CommonView {
     // multiple times in the same second
     var lastVibrationDuration = 0;
 
+    // field information
+    var timerFields = new[3];
+
     //
     // initialize the view
     //
     function initialize() {
         $.timer = self;
-        var settings = System.getDeviceSettings();
-        if (settings.screenShape == System.SCREEN_SHAPE_ROUND)
-        {
-            self.buttonHeightTop = 60;
-            self.buttonHeightBottom = 80;
-        }
         highSpeedRefresh = true;
+        changeMode(self.mode);
         CommonView.initialize("timer");
     }
 
@@ -92,6 +82,44 @@ class TimerView extends CommonView {
     function changeMode(newMode)
     {
         mode = newMode;
+        updateFields();
+    }
+
+    function updateFields()
+    {
+        // read our settings
+        var app = App.getApp();
+        var timerDisplayMode = app.getProperty("timerDisplayMode");
+        var bigTimer = (timerDisplayMode != null && timerDisplayMode == 1);
+        var autoSwitchToMarks = app.getProperty("autoSwitchToMarks");
+
+        // switch to marks view on race start
+        if (mode == mode_sailing && autoSwitchToMarks)
+        {
+            $.inputDelegate.switchToView(:marksView);
+        }
+
+        if (bigTimer)
+        {
+            self.timerFields[0] = $.fields[TIMER_FIELD];
+            self.timerFields[1] = $.fields[SOG_FIELD];
+            self.timerFields[2] = $.fields[COG_FIELD];
+        }
+        else /* big COG (default) */
+        {
+            if (mode == mode_prep || mode == mode_insequence)
+            {
+                self.timerFields[0] = $.fields[TIMER_FIELD];
+                self.timerFields[1] = $.fields[COG_FIELD];
+                self.timerFields[2] = $.fields[SOG_FIELD];
+            }
+            else
+            {
+                self.timerFields[0] = $.fields[SOG_FIELD];
+                self.timerFields[1] = $.fields[COG_FIELD];
+                self.timerFields[2] = $.fields[TIMER_FIELD];
+            }
+        }
     }
 
     //
@@ -461,11 +489,18 @@ class TimerView extends CommonView {
             }
         }
 
-        // set timer in view
-        var view = Ui.View.findDrawableById("TimerValue");
-        if (view != null)
+        // update local fields
+        $.fields[TIMER_FIELD].setValue(timerText);
+
+        // update fields in the view
+        for (var i = 0; i < 3; i++)
         {
-            view.setText(timerText);
+            if (self.timerFields[i] != null)
+            {
+                setTextOnField("FieldValue" + i, self.timerFields[i].value());
+                setTextOnField("FieldLabel" + i, self.timerFields[i].label());
+                setTextOnField("FieldUnits" + i, self.timerFields[i].units());
+            }
         }
 
         // set finish text in view
@@ -508,33 +543,19 @@ class TimerView extends CommonView {
                 var timestruct = Gregorian.info(finishTimes[i], Time.FORMAT_SHORT);
                 var clockTime = timestruct.hour.format("%02u") + ":" + timestruct.min.format("%02u") + ":" + timestruct.sec.format("%02u");
 
-                view = Ui.View.findDrawableById("FinishClock" + finish_index);
-                if (view != null) 
-                {
-                    view.setText(clockTime);
-                }
-                view = Ui.View.findDrawableById("FinishTimer" + finish_index);
-                if (view != null) 
-                {
-                    view.setText(finishTimerText);
-                }
-                view = Ui.View.findDrawableById("FinishOffset" + finish_index);
-                if (view != null) 
-                {
-                    view.setText(offset);
-                }
+                setTextOnField("FinishClock" + finish_index, clockTime);
+                setTextOnField("FinishTimer" + finish_index, finishTimerText);
+                setTextOnField("FinishOffset" + finish_index, offset);
+
                 finish_index = finish_index + 1;
                 lastFinish = finishTimes[0];
             }
 
             for (var i = finish_index; i < finishTimes.size(); i++) 
             {
-                view = Ui.View.findDrawableById("FinishClock" + i);
-                if (view != null) { view.setText(""); }
-                view = Ui.View.findDrawableById("FinishTimer" + i);
-                if (view != null) { view.setText(""); }
-                view = Ui.View.findDrawableById("FinishOffset" + i);
-                if (view != null) { view.setText(""); }
+                setTextOnField("FinishClock" + i, "");
+                setTextOnField("FinishTimer" + i, "");
+                setTextOnField("FinishOffset" + i, "");
             }
         }
 

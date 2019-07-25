@@ -22,16 +22,17 @@
         <label id="TimerMode" x="&timerModeX;" y="&timerModeY;" font="&timerModeFont;" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="Prep" />
         <!-- line at 55 pixels -->
         <!-- countdown timer -->
-        <label id="TimerLabel" x="15" y="60" font="&fieldLabelFont;" justification="Gfx.TEXT_JUSTIFY_LEFT" color="&fgcolor;" text="tmr" />
-        <label id="TimerValue" x="&center;" y="65" font="Gfx.FONT_NUMBER_THAI_HOT" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="" />
+        <label id="FieldLabel0" x="15" y="60" font="&fieldLabelFont;" justification="Gfx.TEXT_JUSTIFY_LEFT" color="&fgcolor;" text="" />
+        <label id="FieldValue0" x="&center;" y="65" font="Gfx.FONT_NUMBER_THAI_HOT" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="" />
+        <label id="FieldUnits0" x="205" y="100" font="&fieldLabelFont;" justification="Gfx.TEXT_JUSTIFY_RIGHT" color="&fgcolor;" text="" />
         <!-- line at 140 pixels -->
         <!-- COG -->
-        <label id="CogLabel" x="15" y="140" font="&fieldLabelFont;" justification="Gfx.TEXT_JUSTIFY_LEFT" color="&fgcolor;" text="COG" />
-        <label id="CogValue" x="&center;" y="146" font="Gfx.FONT_NUMBER_HOT" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="" />
-        <label id="CogUnitsLabel" x="205" y="180" font="&fieldLabelFont;" justification="Gfx.TEXT_JUSTIFY_RIGHT" color="&fgcolor;" text="deg" />
+        <label id="FieldLabel1" x="15" y="140" font="&fieldLabelFont;" justification="Gfx.TEXT_JUSTIFY_LEFT" color="&fgcolor;" text="" />
+        <label id="FieldValue1" x="&center;" y="146" font="Gfx.FONT_NUMBER_HOT" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="" />
+        <label id="FieldUnits1" x="205" y="180" font="&fieldLabelFont;" justification="Gfx.TEXT_JUSTIFY_RIGHT" color="&fgcolor;" text="" />
         <!--- line at 215 pixels -->
         <!-- speed -->
-        <label id="SogValue" x="&center;" y="215" font="&clockSpeedFont;" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="" />
+        <label id="FieldValue2" x="&center;" y="215" font="&clockSpeedFont;" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="" />
         <!-- grid -->
         <drawable id="timergrid" />
     </layout>     
@@ -41,16 +42,17 @@
         <label id="TimerMode" x="&timerModeX;" y="&timerModeY;" font="&timerModeFont;" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="In Sequence" />
         <!-- line at 55 pixels -->
         <!-- countdown timer -->
-        <label id="TimerLabel" x="15" y="60" font="&fieldLabelFont;" justification="Gfx.TEXT_JUSTIFY_LEFT" color="&fgcolor;" text="tmr" />
-        <label id="TimerValue" x="&center;" y="65" font="Gfx.FONT_NUMBER_THAI_HOT" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="" />
+        <label id="FieldLabel0" x="15" y="60" font="&fieldLabelFont;" justification="Gfx.TEXT_JUSTIFY_LEFT" color="&fgcolor;" text="" />
+        <label id="FieldValue0" x="&center;" y="65" font="Gfx.FONT_NUMBER_THAI_HOT" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="" />
+        <label id="FieldUnits0" x="205" y="100" font="&fieldLabelFont;" justification="Gfx.TEXT_JUSTIFY_RIGHT" color="&fgcolor;" text="" />
         <!-- line at 140 pixels -->
         <!-- COG -->
-        <label id="CogLabel" x="15" y="140" font="&fieldLabelFont;" justification="Gfx.TEXT_JUSTIFY_LEFT" color="&fgcolor;" text="COG" />
-        <label id="CogValue" x="&center;" y="146" font="Gfx.FONT_NUMBER_HOT" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="" />
-        <label id="CogUnitsLabel" x="205" y="180" font="&fieldLabelFont;" justification="Gfx.TEXT_JUSTIFY_RIGHT" color="&fgcolor;" text="deg" />
+        <label id="FieldLabel1" x="15" y="140" font="&fieldLabelFont;" justification="Gfx.TEXT_JUSTIFY_LEFT" color="&fgcolor;" text="" />
+        <label id="FieldValue1" x="&center;" y="146" font="Gfx.FONT_NUMBER_HOT" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="" />
+        <label id="FieldUnits1" x="205" y="180" font="&fieldLabelFont;" justification="Gfx.TEXT_JUSTIFY_RIGHT" color="&fgcolor;" text="" />
         <!--- line at 215 pixels -->
         <!-- speed -->
-        <label id="SogValue" x="&center;" y="215" font="&clockSpeedFont;" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="" />
+        <label id="FieldValue2" x="&center;" y="215" font="&clockSpeedFont;" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="" />
         <!-- grid -->
         <drawable id="timergrid" />
     </layout>    
@@ -60,17 +62,17 @@
         <label id="TimerMode" x="&timerModeX;" y="&timerModeY;" font="&timerModeFont;" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="Sailing" />
         <!-- line at 55 pixels -->
         <!-- countdown timer -->
-        <label id="SogLabel" x="15" y="58" font="&fieldLabelFont;" justification="Gfx.TEXT_JUSTIFY_LEFT" color="&fgcolor;" text="SOG" />
-        <label id="SogValue" x="&center;" y="65" font="Gfx.FONT_NUMBER_THAI_HOT" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="" />
-        <label id="SogUnitsLabel" x="205" y="100" font="&fieldLabelFont;" justification="Gfx.TEXT_JUSTIFY_RIGHT" color="&fgcolor;" text="kts" />
+        <label id="FieldLabel0" x="15" y="60" font="&fieldLabelFont;" justification="Gfx.TEXT_JUSTIFY_LEFT" color="&fgcolor;" text="" />
+        <label id="FieldValue0" x="&center;" y="65" font="Gfx.FONT_NUMBER_THAI_HOT" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="" />
+        <label id="FieldUnits0" x="205" y="100" font="&fieldLabelFont;" justification="Gfx.TEXT_JUSTIFY_RIGHT" color="&fgcolor;" text="" />
         <!-- line at 140 pixels -->
         <!-- COG -->
-        <label id="CogLabel" x="15" y="140" font="&fieldLabelFont;" justification="Gfx.TEXT_JUSTIFY_LEFT" color="&fgcolor;" text="COG" />
-        <label id="CogValue" x="&center;" y="146" font="Gfx.FONT_NUMBER_HOT" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="" />
-        <label id="CogUnitsLabel" x="205" y="180" font="&fieldLabelFont;" justification="Gfx.TEXT_JUSTIFY_RIGHT" color="&fgcolor;" text="deg" />
+        <label id="FieldLabel1" x="15" y="140" font="&fieldLabelFont;" justification="Gfx.TEXT_JUSTIFY_LEFT" color="&fgcolor;" text="" />
+        <label id="FieldValue1" x="&center;" y="146" font="Gfx.FONT_NUMBER_HOT" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="" />
+        <label id="FieldUnits1" x="205" y="180" font="&fieldLabelFont;" justification="Gfx.TEXT_JUSTIFY_RIGHT" color="&fgcolor;" text="" />
         <!--- line at 215 pixels -->
-        <!-- timer -->
-        <label id="TimerValue" x="&center;" y="215" font="&clockSpeedFont;" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="" />
+        <!-- speed -->
+        <label id="FieldValue2" x="&center;" y="215" font="&clockSpeedFont;" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="" />
         <!-- grid -->
         <drawable id="timergrid" />
     </layout>    
@@ -80,11 +82,10 @@
         <label id="TimerMode" x="&timerModeX;" y="&timerModeY;" font="&timerModeFont;" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="Finish" />
         <!-- line at 55 pixels -->
         <!-- countdown timer -->
-        <label id="SogLabel" x="&left;" y="52" font="&fieldLabelFont;" justification="Gfx.TEXT_JUSTIFY_LEFT" color="&fgcolor;" text="SOG" />
-        <label id="SogValue" x="&quarterLeft;" y="74" font="Gfx.FONT_NUMBER_MEDIUM" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="" />
-        <label id="SogUnitsLabel" x="&quarterLeft;" y="255" font="Gfx.FONT_NUMBER_MILD" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="" />
-        <label id="CogLabel" x="&center;" y="52" font="&fieldLabelFont;" justification="Gfx.TEXT_JUSTIFY_LEFT" color="&fgcolor;" text="COG" />
-        <label id="CogValue" x="&quarterRight;" y="74" font="Gfx.FONT_NUMBER_MEDIUM" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="" />
+        <label id="FieldLabel0" x="&left;" y="52" font="&fieldLabelFont;" justification="Gfx.TEXT_JUSTIFY_LEFT" color="&fgcolor;" text="SOG" />
+        <label id="FieldValue0" x="&quarterLeft;" y="74" font="Gfx.FONT_NUMBER_MEDIUM" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="" />
+        <label id="FieldLabel1" x="&center;" y="52" font="&fieldLabelFont;" justification="Gfx.TEXT_JUSTIFY_LEFT" color="&fgcolor;" text="COG" />
+        <label id="FieldValue1" x="&quarterRight;" y="74" font="Gfx.FONT_NUMBER_MEDIUM" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="" />
 
         <!-- line at 120 pixels -->
         <label id="FinishClock0" x="0" y="120" font="Gfx.FONT_XTINY" justification="Gfx.TEXT_JUSTIFY_LEFT" color="&fgcolor;" text="" />
@@ -102,7 +103,7 @@
 
         <!--- line at 215 pixels -->
         <!-- timer -->
-        <label id="TimerValue" x="&center;" y="215" font="&clockSpeedFont;" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="" />
+        <label id="FieldValue2" x="&center;" y="215" font="&clockSpeedFont;" justification="Gfx.TEXT_JUSTIFY_CENTER" color="&fgcolor;" text="" />
         <!-- grid -->
         <drawable id="finishgrid" />
     </layout>    

@@ -1,9 +1,11 @@
 <properties>
-    <property id="appVersion" type="string">3.02</property>
+    <property id="appVersion" type="string">3.1</property>
     <property id="calTopoId" type="string">GRU6</property>
     <property id="forcePugetSound" type="boolean">false</property>
     <property id="hideTimerView" type="boolean">false</property>
     <property id="hideMarksView" type="boolean">false</property>
     <property id="hideTidesView" type="boolean">false</property>
     <property id="hideWindsView" type="boolean">true</property>
+    <property id="autoSwitchToMarks" type="boolean">true</property>
+    <property id="timerDisplayMode" type="number">0</property>
 </properties>

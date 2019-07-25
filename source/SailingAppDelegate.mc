@@ -240,12 +240,20 @@ class SailingAppDelegateGeneric extends Ui.BehaviorDelegate {
         {
             currentView = viewsDict[menuItemSymbol];
             Ui.popView(Ui.SLIDE_DOWN);
-            Ui.switchToView(viewsDict[menuItemSymbol], self, Ui.SLIDE_IMMEDIATE);
+            switchToView(menuItemSymbol);
             return true;
         }
         else
         {
             return false;
+        }
+    }
+
+    function switchToView(viewSymbol)
+    {
+        if (viewsDict[viewSymbol] != null)
+        {
+            Ui.switchToView(viewsDict[viewSymbol], self, Ui.SLIDE_IMMEDIATE);
         }
     }
 }

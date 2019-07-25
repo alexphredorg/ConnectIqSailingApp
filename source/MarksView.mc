@@ -554,6 +554,7 @@ class MarksView extends CommonView {
 
         var markIdText = "---";
         var markNameText = "(no mark)";
+        var relativeAngle = -1;
 
         if (selectedFolder >= 0 && markNameIndex >= 0)
         {
@@ -578,7 +579,6 @@ class MarksView extends CommonView {
             var distance = "---";
             var angle = "---";
             var vmg = "---";
-            var relativeAngle = "---";
             
             if (position != null)
             {
@@ -592,9 +592,20 @@ class MarksView extends CommonView {
                     distance = a[0].format("%0.1f");
                 }
                 angle = a[1].toNumber();
+                var cog = ($.heading * 57.2957795).toNumber();
+                // compute a relative angle from -180 to 180 degrees from our cog to the mark
+                relativeAngle = (((((cog + 360) % 360) - ((angle + 360) % 360)) + 360) % 360) - 180;
+                //System.println("cog = " + cog + " : angle = " + angle + " : relativeAngle = " + relativeAngle);
                 vmg = self.speed * 1.94384449 * Math.cos(self.cog - (angle / 57.2957795));
                 vmg = vmg.format("%02.1f");
                 angle = a[1].format("%0.0f");
+
+                // switch relative angle to the watch's stupid coordinates: 
+                // 0 degrees: 3 o'clock position.
+                // 90 degrees: 12 o'clock position.
+                // 180 degrees: 9 o'clock position.
+                // 270 degrees: 6 o'clock position.
+                relativeAngle = relativeAngle + 270;
             } 
 
             CommonView.setValueText("BtwValue", angle);
@@ -602,10 +613,17 @@ class MarksView extends CommonView {
             CommonView.setValueText("DtwValue", distance);
         }
 
-        // draw a G in the upper left showing GPS status
-        dc.setColor(GpsAccuracyColor($.gpsAccuracy), Graphics.COLOR_TRANSPARENT);
-        dc.drawText(0, 0, Graphics.FONT_XTINY, "G", Graphics.TEXT_JUSTIFY_LEFT);
-
         CommonView.onUpdate(dc);
+        if (relativeAngle >= 0)
+        {
+            dc.setColor(Graphics.COLOR_YELLOW, Graphics.COLOR_TRANSPARENT);
+            var width = 1;
+            var maxRadius = screenWidth / 2;
+            var minRadius = maxRadius - 10;
+            for (var radius = minRadius; radius < maxRadius; radius++)
+            {
+                dc.drawArc(self.screenWidth / 2, self.screenHeight / 2, radius, Graphics.ARC_CLOCKWISE, relativeAngle + width, relativeAngle - width);
+            }
+        }
     }
 }
