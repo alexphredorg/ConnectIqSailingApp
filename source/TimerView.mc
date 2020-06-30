@@ -43,6 +43,14 @@ class TimerView extends CommonView {
     var quarterWidth;
     // the font that we use when drawing buttons
 
+    // button delegates
+    var buttonHeightTop = 35;
+    var buttonHeightBottom = 35;
+    var topLeftButtonCallback = null;
+    var topRightButtonCallback = null;
+    var bottomLeftButtonCallback = null;
+    var bottomRightButtonCallback = null;
+
     var finishTimes = null;
     var raceTime = null;
 
@@ -50,16 +58,18 @@ class TimerView extends CommonView {
     // multiple times in the same second
     var lastVibrationDuration = 0;
 
-    // field information
-    var timerFields = new[3];
-
     //
     // initialize the view
     //
     function initialize() {
         $.timer = self;
+        var settings = System.getDeviceSettings();
+        if (settings.screenShape == System.SCREEN_SHAPE_ROUND)
+        {
+            self.buttonHeightTop = 60;
+            self.buttonHeightBottom = 80;
+        }
         highSpeedRefresh = true;
-        changeMode(self.mode);
         CommonView.initialize("timer");
     }
 
@@ -67,10 +77,9 @@ class TimerView extends CommonView {
     // Start the timer (occurs on enter button press).  This also 
     // starts recording a session (as soon as we have GPS).
     //
-    // timerDuration -- How long to count down for
-    //
-    function startTimer(timerDuration) {
+    function startTimer() {
         System.println("starting new timer");
+        // starting a fresh timer
         timerZero = Time.now();
         timerZero = timerZero.add(new Time.Duration(timerDuration));
         changeMode(mode_insequence);
@@ -82,44 +91,6 @@ class TimerView extends CommonView {
     function changeMode(newMode)
     {
         mode = newMode;
-        updateFields();
-    }
-
-    function updateFields()
-    {
-        // read our settings
-        var app = App.getApp();
-        var timerDisplayMode = app.getProperty("timerDisplayMode");
-        var bigTimer = (timerDisplayMode != null && timerDisplayMode == 1);
-        var autoSwitchToMarks = app.getProperty("autoSwitchToMarks");
-
-        // switch to marks view on race start
-        if (mode == mode_sailing && autoSwitchToMarks)
-        {
-            $.inputDelegate.switchToView(:marksView);
-        }
-
-        if (bigTimer)
-        {
-            self.timerFields[0] = $.fields[TIMER_FIELD];
-            self.timerFields[1] = $.fields[SOG_FIELD];
-            self.timerFields[2] = $.fields[COG_FIELD];
-        }
-        else /* big COG (default) */
-        {
-            if (mode == mode_prep || mode == mode_insequence)
-            {
-                self.timerFields[0] = $.fields[TIMER_FIELD];
-                self.timerFields[1] = $.fields[COG_FIELD];
-                self.timerFields[2] = $.fields[SOG_FIELD];
-            }
-            else
-            {
-                self.timerFields[0] = $.fields[SOG_FIELD];
-                self.timerFields[1] = $.fields[COG_FIELD];
-                self.timerFields[2] = $.fields[TIMER_FIELD];
-            }
-        }
     }
 
     //
@@ -144,16 +115,13 @@ class TimerView extends CommonView {
     }
 
     //
-    // Ask if the user wants to reset, do the reset if they confirm
+    // reset the timer.  This also stops recording a session.
     //
     function promptReset() { 
         var dialog = new Ui.Confirmation("Confirm reset?");
         Ui.pushView(dialog, new ConfirmResetDelegate(), Ui.SLIDE_IMMEDIATE);
     }
 
-    //
-    // reset the timer.  This also stops recording a session.
-    //
     function reset()
     {
         clearFinish();
@@ -178,7 +146,7 @@ class TimerView extends CommonView {
     function justSail()
     {
         timerDuration = 0;
-        startTimer(0);
+        startTimer();
         changeMode(mode_sailing);
     }
 
@@ -202,9 +170,6 @@ class TimerView extends CommonView {
         Ui.requestUpdate();
     }
 
-    //
-    // Handle down button presses.  Functionality varies depending on mode
-    //
     function onDownKey() 
     {
         switch (mode) {
@@ -228,9 +193,6 @@ class TimerView extends CommonView {
         return true;
     }
 
-    //
-    // Handle up button presses.  Functionality varies depending on mode
-    //
     function onUpKey()
     {
         switch (mode) {
@@ -250,9 +212,6 @@ class TimerView extends CommonView {
         return true;
     }
 
-    //
-    // Insert mode-specific menu items when the menu button is pressed
-    //
     function addViewMenuItems(menu)
     {
         System.println("adding view menu items for timer");
@@ -276,9 +235,6 @@ class TimerView extends CommonView {
         }
     }
 
-    //
-    // Handle mode-specific menu items
-    //
     function viewMenuItemSelected(symbol, item)
     {
         var reset = false;
@@ -313,7 +269,7 @@ class TimerView extends CommonView {
     function onEnterKey() {
         if (timerZero == null) 
         {
-            startTimer(self.timerDuration);
+            startTimer();
         } 
         else if (mode == mode_sailing)
         {
@@ -322,9 +278,6 @@ class TimerView extends CommonView {
         return true;
     }
 
-    // 
-    // Finish button was pressed, record the time and update the list
-    //
     function finishTimer()
     {
         if (finishTimes == null)
@@ -396,6 +349,87 @@ class TimerView extends CommonView {
 
         quarterWidth = dc.getWidth() / 4;
 
+    }
+
+    // 
+    // Draw the menu buttons
+    //
+    function drawMenu(dc, fgcolor, bgcolor)
+    {
+        var topLeft = "reset";
+        var topRight = null;
+        var bottomLeft = null;
+        var bottomRight = "Quit";
+        var bottomLeftBgColor = Graphics.COLOR_WHITE;
+        var bottomLeftFgColor = Graphics.COLOR_BLACK;
+
+        topLeftButtonCallback = method(:promptReset);
+        topRightButtonCallback = null;
+        bottomLeftButtonCallback = null;
+        bottomRightButtonCallback = method(:quit);
+
+        switch (mode)
+        {
+            case mode_prep:
+                topLeft = "-1:00";
+                topRight = "+1:00";
+                bottomLeft = "Just Sail";
+                bottomLeftBgColor = Graphics.COLOR_GREEN;
+                bottomLeftFgColor = Graphics.COLOR_WHITE;
+                bottomLeftButtonCallback = method(:justSail);
+                break;
+            case mode_insequence:
+                topRight = "sync";
+                topRightButtonCallback = method(:sync);
+                break;
+            case mode_sailing:
+                break;
+            case mode_finish:
+                bottomLeft = "Clear Finish";
+                bottomLeftButtonCallback = method(:clearFinish);
+                break;
+            default:
+                break;
+        }
+
+        var biasTop = 7;
+        var biasBottom = 7;
+        var settings = System.getDeviceSettings();
+        if (settings.screenShape == System.SCREEN_SHAPE_ROUND)
+        {
+            biasTop = 30;
+            biasBottom = 0;
+        }
+
+        // top left button
+        dc.setColor(fgcolor, fgcolor);
+        dc.fillRoundedRectangle(2, 2, (quarterWidth * 2) - 2, self.buttonHeightTop - 2, 2);
+        dc.setColor(bgcolor, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(quarterWidth * 1, biasTop, Graphics.FONT_SMALL, topLeft, Graphics.TEXT_JUSTIFY_CENTER);
+
+        // top right button
+        if (topRight)
+        {
+            dc.setColor(fgcolor, fgcolor);
+            dc.fillRoundedRectangle((quarterWidth * 2) + 2, 2, (quarterWidth * 2) - 2, self.buttonHeightTop - 2, 2);
+            dc.setColor(bgcolor, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(quarterWidth * 3, biasTop, Graphics.FONT_SMALL, topRight, Graphics.TEXT_JUSTIFY_CENTER);
+        }
+
+        // bottom left button
+        if (bottomLeft)
+        {
+            dc.setColor(bottomLeftBgColor, Graphics.COLOR_TRANSPARENT);
+            dc.fillRoundedRectangle(2, screenHeight - self.buttonHeightBottom, (quarterWidth * 3) - 2, screenHeight - 2, 2);
+            dc.setColor(bottomLeftFgColor, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(quarterWidth * 1.5, screenHeight - buttonHeightBottom + biasBottom, Graphics.FONT_SMALL, bottomLeft, Graphics.TEXT_JUSTIFY_CENTER);
+        }
+
+        // bottom right button
+        dc.setColor(Graphics.COLOR_RED, Graphics.COLOR_TRANSPARENT);
+        dc.fillRoundedRectangle((quarterWidth * 3) + 2, screenHeight - self.buttonHeightBottom, (quarterWidth * 4) - 2, screenHeight - 2, 2);
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(quarterWidth * 3.5, screenHeight - buttonHeightBottom + biasBottom, Graphics.FONT_SMALL, bottomRight, Graphics.TEXT_JUSTIFY_CENTER);
     }
 
     //
@@ -489,18 +523,11 @@ class TimerView extends CommonView {
             }
         }
 
-        // update local fields
-        $.fields[TIMER_FIELD].setValue(timerText);
-
-        // update fields in the view
-        for (var i = 0; i < 3; i++)
+        // set timer in view
+        var view = Ui.View.findDrawableById("TimerValue");
+        if (view != null)
         {
-            if (self.timerFields[i] != null)
-            {
-                setTextOnField("FieldValue" + i, self.timerFields[i].value());
-                setTextOnField("FieldLabel" + i, self.timerFields[i].label());
-                setTextOnField("FieldUnits" + i, self.timerFields[i].units());
-            }
+            view.setText(timerText);
         }
 
         // set finish text in view
@@ -543,19 +570,33 @@ class TimerView extends CommonView {
                 var timestruct = Gregorian.info(finishTimes[i], Time.FORMAT_SHORT);
                 var clockTime = timestruct.hour.format("%02u") + ":" + timestruct.min.format("%02u") + ":" + timestruct.sec.format("%02u");
 
-                setTextOnField("FinishClock" + finish_index, clockTime);
-                setTextOnField("FinishTimer" + finish_index, finishTimerText);
-                setTextOnField("FinishOffset" + finish_index, offset);
-
+                view = Ui.View.findDrawableById("FinishClock" + finish_index);
+                if (view != null) 
+                {
+                    view.setText(clockTime);
+                }
+                view = Ui.View.findDrawableById("FinishTimer" + finish_index);
+                if (view != null) 
+                {
+                    view.setText(finishTimerText);
+                }
+                view = Ui.View.findDrawableById("FinishOffset" + finish_index);
+                if (view != null) 
+                {
+                    view.setText(offset);
+                }
                 finish_index = finish_index + 1;
                 lastFinish = finishTimes[0];
             }
 
             for (var i = finish_index; i < finishTimes.size(); i++) 
             {
-                setTextOnField("FinishClock" + i, "");
-                setTextOnField("FinishTimer" + i, "");
-                setTextOnField("FinishOffset" + i, "");
+                view = Ui.View.findDrawableById("FinishClock" + i);
+                if (view != null) { view.setText(""); }
+                view = Ui.View.findDrawableById("FinishTimer" + i);
+                if (view != null) { view.setText(""); }
+                view = Ui.View.findDrawableById("FinishOffset" + i);
+                if (view != null) { view.setText(""); }
             }
         }
 

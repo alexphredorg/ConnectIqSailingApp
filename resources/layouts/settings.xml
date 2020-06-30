@@ -20,6 +20,9 @@
     <setting propertyKey="@Properties.hideWindsView" title="@Strings.HideWindsView">
         <settingConfig type="boolean" readonly="false"/>
     </setting>
+    <setting propertyKey="@Properties.autoSwitchToMarks" title="@Strings.AutoSwitchToMarks">
+        <settingConfig type="boolean" readonly="false"/>
+    </setting>
     <setting propertyKey="@Properties.timerDisplayMode" title="@Strings.TimerDisplayMode">
         <settingConfig type="list">
             <listEntry value="0">@Strings.BigCOG</listEntry>

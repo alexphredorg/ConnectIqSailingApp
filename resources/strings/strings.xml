@@ -9,6 +9,7 @@
     <string id="HideWindsView">Hide the WInds screen? (on by default only for Puget Sound)</string>
     <string id="AutoSwitchToMarksView">Automatically switch to the marks view on start of race?</string>
     <string id="TimerDisplayMode">Sailing Layout for Timer Screen</string>
+    <string id="AutoSwitchToMarks">Automatically switch to Marks View after start sequence</string>
     <string id="BigCOG">COG is big and timer is small</string>
     <string id="BigTimer">Timer is big and COG is small</string>
 </strings>

@@ -58,6 +58,7 @@ class CommonView extends Ui.View {
 
     function onEscKey() 
     {
+        System.println("onEscKey");
         return quitDialog();
     }
 
@@ -104,6 +105,8 @@ class CommonView extends Ui.View {
     // subclasses can use this to add custom entries into the menu
     function addViewMenuItems(menu)
     {
+        System.println("addViewMenuItems default");
+        // menu.addItem(new Ui.MenuItem("Tides Page", "Show Tides Page", :tidesMenuItem, {}));
     }
 
     function viewMenuItemSelected(symbol, item)
@@ -114,7 +117,10 @@ class CommonView extends Ui.View {
     // called when a menu item has been selected
     function menuItemSelected(item)
     {
+        System.println("in menu item selected");
+        System.println(item.getLabel());
         var symbol = item.getId();
+        System.println(symbol);
         if ($.inputDelegate.viewMenuItemSelected(symbol, item))
         {
             System.println("$.inputDelegate.viewMenuItemSelected returned true");
@@ -230,15 +236,6 @@ class CommonView extends Ui.View {
             var timestruct = Gregorian.info(now, Time.FORMAT_SHORT);
             var clockTime = timestruct.hour.format("%02u") + ":" + timestruct.min.format("%02u") + ":" + timestruct.sec.format("%02u");
             view.setText(clockTime);
-        }
-    }
-
-    function setTextOnField(fieldName, text)
-    {
-        var viewObject = Ui.View.findDrawableById(fieldName);
-        if (viewObject != null) 
-        {
-            viewObject.setText(text);
         }
     }
 

@@ -19,11 +19,19 @@ from libtcd.api import ReferenceStation
 
 from math import radians, cos, sin, asin, sqrt, log10, floor
 
-TCD_FILENAME='/usr/share/xtide/harmonics-dwf-20100529-free.tcd'
+from datetime import datetime
+from datetime import date
+
+#TCD_FILENAME='/usr/share/xtide/harmonics-dwf-20100529-free.tcd'
+TCD_FILENAME_FREE='./harmonics-dwf-20190620/harmonics-dwf-20190620-free.tcd'
+TCD_FILENAME_NONFREE='/usr/share/xtide/harmonics-dwf-20100529-nonfree.tcd'
+
+
 
 
 __all__ = ['MainHandler', 'run_server']
-__tcd__ = Tcd.open(TCD_FILENAME)
+__tcd_free__ = Tcd.open(TCD_FILENAME_FREE)
+__tcd_nonfree__ = Tcd.open(TCD_FILENAME_NONFREE)
 # dict of stations, key is station id
 __tcd_stations__ = {}
 
@@ -32,6 +40,9 @@ def roundsig(x, n=8):
     power = -int(floor(log10(abs(x)))) + (n - 1)
     factor = (10 ** power)
     return round(x * factor) / factor
+
+def debug(str):
+    print("%s: %s" % (datetime.now().strftime("%b %d %I:%M"), str))
 
 #
 # CalTopoHandler fetches a custom map from CalTopo and pulls the 
@@ -51,9 +62,9 @@ class CalTopoHandler(tornado.web.RequestHandler):
         if caltopoId == None:
             raise tornado.web.HTTPError(500) 
         http = tornado.httpclient.AsyncHTTPClient()
-        print("Called by http://:18266/CalTopo/" + caltopoId)
+        debug("Called by /CalTopo/" + caltopoId)
         caltopoUrl = "https://caltopo.com/m/" + caltopoId + "?format=json"
-        print("fetching: " + caltopoUrl)
+        debug("fetching: " + caltopoUrl)
         http.fetch(caltopoUrl, callback=self.on_response)
     
     def on_response(self, response):
@@ -170,7 +181,7 @@ class TideStationsHandler(tornado.web.RequestHandler):
         lat = float(latlon[0])
         lon = float(latlon[1])
         stations = [];
-        print("tide station search near: %f,%f" % (lat,lon))
+        debug("tide station search near: %f,%f" % (lat,lon))
         for id,t in __tcd_stations__.items():
             km = self.measureDistance(lat, lon, t.latitude, t.longitude)
             if km < 2000:
@@ -218,13 +229,16 @@ class TideStationsHandler(tornado.web.RequestHandler):
 class TideStationHandler(tornado.web.RequestHandler):
     def get(self, id):
         if id == None:
+            debug("tide station lookup, error no station id")
             returnData = {"error":"no station id specified"}
             self.write(tornado.escape.json_encode(returnData))
             self.finish()
             return
 
         id = int(id)
+        debug("tide station lookup for station id: %i" % (id))
         if id not in __tcd_stations__:
+            debug("tide station lookup, error invalid station id")
             returnData = {"error":"invalid station id"}
             self.write(tornado.escape.json_encode(returnData))
             self.finish()
@@ -237,7 +251,8 @@ class TideStationHandler(tornado.web.RequestHandler):
         speed = []
         e = {}
         n = {}
-        years=range(2017, 2020)
+        year = date.today().year
+        years=range(year, year+3)
 
         for co in station.coefficients:
             amp.append(roundsig(co.amplitude, 6))
@@ -266,6 +281,7 @@ class TideStationHandler(tornado.web.RequestHandler):
             "node_factor":n
         }
 
+        debug("tide station lookup for station name: %s" % (station.name))
         returnData = {"station":d}
         json = tornado.escape.json_encode(returnData)
                 
@@ -290,17 +306,22 @@ def run_server(port, start_ioloop=True):
         ioloop.start()
 
 if __name__ == '__main__':
+    debug("Loading tide database")
     # cache the stations that we can actually work with into an in-memory dict
-    for t in __tcd__:
+    for t in __tcd_nonfree__:
         if type(t) is ReferenceStation and 'Current' not in t.name:
             __tcd_stations__[t.record_number] = t
-    print("There are %i reference tide stations" % len(__tcd_stations__))
+    debug("There are %i reference tide stations (outside of US)" % len(__tcd_stations__))
+    for t in __tcd_free__:
+        if type(t) is ReferenceStation and 'Current' not in t.name:
+            __tcd_stations__[t.record_number] = t
+    debug("There are %i reference tide stations (total)" % len(__tcd_stations__))
 
     # parse cmdline parameters
-    port = 18266
+    port = 18277
     if len(sys.argv) > 1:
         port = int(sys.argv[1])
 
     # start the web server
-    print("Starting SailingApp on port %d" % port)
+    debug("Starting SailingApp on port %d" % port)
     run_server(port)
